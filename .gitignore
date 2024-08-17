@@ -1,0 +1,23 @@
+# Exclude large files
+*.tif
+*.pth
+*.pt
+*.ckpt
+data/GroundTruth_CHE_switzerland_2019_10m.tif
+data/GroundTruth_CHE_switzerland_2019_10m_WGS.tif
+data/resampled_ground_truth_canopy_height_30m.tiff
+model/save_load_model/best_model_state_2024_08_15_140502.pth
+model/save_load_model/best_model_state_2024_08_15_151119.pth
+model/save_load_model/best_model_state_New.pth
+model/save_load_model/checkpoint.pth
+prithvi/Prithvi_100M.pt
+results/hls_HLS.S30.T32TMS.2019045T103129.v2.0_2024-08-13_1307.tif
+results/hls_HLS.S30.T32TMS.2019052T102039.v2.0_2024-08-13_1302.tif
+results/reconstructed_canopy_height_50.tiff
+results/reconstructed_canopy_height_50_merge.tiff
+results/reconstructed_canopy_height_512.tiff
+results/reconstructed_canopy_height_combined.tiff
+
+# Exclude PyTorch Lightning checkpoints
+prithvi-pytorch-lightning/*/checkpoints/*.ckpt
+

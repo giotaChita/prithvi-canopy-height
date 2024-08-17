@@ -1,0 +1,18 @@
+{
+    "tiles": [
+        {
+            "shId": 20509472,
+            "cloudCoverage": 0,
+            "date": "2019-02-21T10:28:02.774Z",
+            "tileOriginalId": "HLS.S30.T32TMS.2019052T102039.v2.0",
+            "dataPath": "s3://lp-prod-protected/HLSS30.020/HLS.S30.T32TMS.2019052T102039.v2.0"
+        },
+        {
+            "shId": 18679323,
+            "cloudCoverage": 1,
+            "date": "2019-07-24T10:38:08.285Z",
+            "tileOriginalId": "HLS.S30.T32TLS.2019205T103029.v2.0",
+            "dataPath": "s3://lp-prod-protected/HLSS30.020/HLS.S30.T32TLS.2019205T103029.v2.0"
+        }
+    ]
+}

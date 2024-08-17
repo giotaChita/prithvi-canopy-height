@@ -1,0 +1,72 @@
+{
+    "request": {
+        "headers": {
+            "accept": "application/x-tar",
+            "content-type": "application/json"
+        },
+        "payload": {
+            "evalscript": "\n            //VERSION=3\n            function setup() {\n                return {\n                    input: [\"CoastalAerosol\", \"Blue\", \"Green\", \"Red\", \"RedEdge1\", \"RedEdge2\", \"RedEdge3\", \"NIR_Broad\", \"NIR_Narrow\", \"SWIR1\", \"SWIR2\", \"WaterVapor\", \"Cirrus\"],\n                    output: {\n                        bands: 13\n                    }\n                };\n            }\n    \n            function updateOutputMetadata(scenes, inputMetadata, outputMetadata) {\n              outputMetadata.userData = { \"tiles\":  scenes.tiles }\n            }\n    \n            function evaluatePixel(sample) {\n                return [sample.CoastalAerosol, sample.Blue, sample.Green, sample.Red, sample.RedEdge1, sample.RedEdge2, sample.RedEdge3, sample.NIR_Broad, sample.NIR_Narrow, sample.SWIR1, sample.SWIR2, sample.WaterVapor, sample.Cirrus];\n            }\n        ",
+            "input": {
+                "bounds": {
+                    "bbox": [
+                        7.708033,
+                        46.787945,
+                        7.772503,
+                        46.833651
+                    ],
+                    "properties": {
+                        "crs": "http://www.opengis.net/def/crs/EPSG/0/4326"
+                    }
+                },
+                "data": [
+                    {
+                        "dataFilter": {
+                            "mosaickingOrder": "leastCC",
+                            "timeRange": {
+                                "from": "2019-05-01T00:00:00Z",
+                                "to": "2019-05-30T23:59:59Z"
+                            }
+                        },
+                        "type": "hls"
+                    }
+                ]
+            },
+            "output": {
+                "height": 167,
+                "responses": [
+                    {
+                        "format": {
+                            "type": "image/tiff"
+                        },
+                        "identifier": "default"
+                    },
+                    {
+                        "format": {
+                            "type": "application/json"
+                        },
+                        "identifier": "userdata"
+                    }
+                ],
+                "width": 167
+            }
+        },
+        "timestamp": "2024-06-24T12:46:39.175917",
+        "url": "https://services-uswest2.sentinel-hub.com/api/v1/process"
+    },
+    "response": {
+        "elapsed": 2.158234,
+        "headers": {
+            "Connection": "keep-alive",
+            "Content-Type": "application/x-tar",
+            "Date": "Mon, 24 Jun 2024 09:46:38 GMT",
+            "Transfer-Encoding": "chunked",
+            "access-control-allow-credentials": "true",
+            "access-control-allow-headers": "origin,content-type,accept,accept-crs,authorization,cache-control",
+            "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD, PATCH",
+            "access-control-allow-origin": "*",
+            "access-control-max-age": "3600",
+            "x-processingunits-spent": "0.46101508242099953"
+        },
+        "status_code": 200
+    }
+}
