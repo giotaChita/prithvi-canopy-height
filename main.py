@@ -73,7 +73,7 @@ def main(ctx, year, aoi):
     geotransform = ds.GetGeoTransform()
     input_crs = ds.GetProjection()
 
-    # TODO: find a better way to represent the heigth from gedi shots - circular Max Pooling
+    # TODO: find a better way to represent the height from gedi shots - circular Max Pooling
 
     # set to true this the first time if you have not saved the gedi shots to npy file
     download_gedi_shots = False
