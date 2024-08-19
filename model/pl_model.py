@@ -1,12 +1,7 @@
-from typing import Any
-
-from comet_ml import Experiment
-from comet_ml.integration.pytorch import log_model
 import lightning as L
 import torch.nn as nn
 import torch.optim as optim
 from lightning.pytorch.utilities.types import OptimizerLRScheduler
-
 from utils.config import pretrained_model_path
 from torch.utils.data import DataLoader, random_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
@@ -17,7 +12,7 @@ from prithvi.Prithvi import MaskedAutoencoderViT
 
 
 class CHLighteningModule(L.LightningModule):
-    def __init__(self, tile_size, patch_size, hparams):
+    def __init__(self, tile_size, patch_size, hparams, train_dataset, val_dataset, test_dataset):
         super(CHLighteningModule, self).__init__()
 
         self.save_hyperparameters(hparams)
@@ -38,6 +33,11 @@ class CHLighteningModule(L.LightningModule):
 
         self.val_losses = []
         self.val_maes = []
+
+        # Load dataset
+        self.train_dataset = train_dataset
+        self.val_dataset = val_dataset
+        self.test_dataset = test_dataset
 
     def load_pretrained_weights(self):
         pretrained_weights = torch.load(pretrained_model_path)
@@ -85,7 +85,7 @@ class CHLighteningModule(L.LightningModule):
         # Log loss and MAE
         self.log('train_loss', loss, prog_bar=True)
         self.log('train_mae', mae, prog_bar=True)
-
+        # self.log_dict({'train_loss': loss, "train_mae": mae})
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -94,6 +94,7 @@ class CHLighteningModule(L.LightningModule):
         # Log loss and MAE
         self.log('val_loss', loss)
         self.log('val_mae', mae)
+        # self.log_dict({'val_loss': loss, "val_mae": mae})
 
         self.val_losses.append(loss.item())
         self.val_maes.append(mae)
@@ -111,20 +112,14 @@ class CHLighteningModule(L.LightningModule):
         return loss
 
     def predict_step(self, batch, batch_idx):
-        pass
+        x, y = batch
+        y_hat = self(x)
+        pred = torch.argmax(y_hat, dim=1)
+        return pred
 
-    def configure_optimizers(self):
-        return optim.Adam(self.parameters(),  self.hparams.lr)
 
     # def configure_optimizers(self):
-    #     optimizer = optim.Adam(self.parameters(), lr=self.hparams.lr)
-    #     scheduler = {
-    #         'scheduler': torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.1),
-    #         'interval': 'epoch',  # or 'step' depending on your use case
-    #         'frequency': 1,
-    #         'reduce_lr_on_plateau': False  # Optional depending on scheduler
-    #     }
-    #     return {'optimizer': optimizer, 'lr_scheduler': scheduler}
+    #     return optim.Adam(self.parameters(),  self.hparams.lr)
 
     def on_train_epoch_end(self):
         pass
@@ -133,11 +128,28 @@ class CHLighteningModule(L.LightningModule):
         avg_val_loss = np.mean(self.val_losses) if self.val_losses else float('inf')
         avg_val_mae = np.mean(self.val_maes) if self.val_maes else float('inf')
 
-        self.log('val_loss', avg_val_loss, prog_bar=True)
-        self.log('val_mae', avg_val_mae, prog_bar=True)
+        self.log('average val_loss', avg_val_loss, prog_bar=True)
+        self.log('average val_mae', avg_val_mae, prog_bar=True)
 
         # Check for best model
         if avg_val_mae < self.best_val_mae:
             self.best_val_mae = avg_val_mae
             self.best_model_weights = self.state_dict()
 
+    def configure_optimizers(self):
+        optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr)
+        scheduler = get_linear_schedule_with_warmup(
+            optimizer,
+            num_warmup_steps=0,
+            num_training_steps=self.hparams.num_epochs
+        )
+        return [optimizer], [scheduler]
+
+    def train_dataloader(self):
+        return DataLoader(self.train_dataset, batch_size=self.hparams.batch_size, shuffle=True, num_workers=2)
+
+    def val_dataloader(self):
+        return DataLoader(self.val_dataset, batch_size=self.hparams.batch_size, shuffle=False, num_workers=2)
+
+    def test_dataloader(self):
+        return DataLoader(self.test_dataset, batch_size=self.hparams.batch_size, shuffle=False, num_workers=2)

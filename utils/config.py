@@ -2,8 +2,6 @@ import torch
 import datetime
 import os
 
-print(os.getcwd())
-
 checkpoint_path = os.getcwd() + '/model/save_load_model/checkpoint.pth'
 
 # to save gedi shots with good quality

@@ -1,9 +1,10 @@
-import comet_ml
 from lightning.pytorch.loggers import CometLogger
 from lightning.pytorch.callbacks import EarlyStopping
 import lightning as L
 from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
 from lightning.pytorch.tuner import Tuner
+from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.profilers import PyTorchProfiler
 from osgeo import gdal
 import click
 from utils.config import cache_path, best_model_path_new
@@ -72,7 +73,6 @@ def main(ctx, year, aoi):
     if ds is None:
         raise FileNotFoundError(f"Failed to open HLS image at {file_path1}")
 
-
     geotransform = ds.GetGeoTransform()
     input_crs = ds.GetProjection()
 
@@ -94,17 +94,10 @@ def main(ctx, year, aoi):
     overlap = tile_size // 2
 
     dataset1 = TiledDataset(hls_data1, canopy_height_labels, tile_size=tile_size, overlap=overlap)
+    dataset2 = TiledDataset(hls_data2, canopy_height_labels, tile_size=tile_size, overlap=overlap)
 
     # Count non-NaN pixels of canopy height for img1
     valid_pixels, total_pixels = dataset1.count_non_nan_pixels()
-    print(f"Number of valid (non-NaN) pixels in the dataset: {valid_pixels}")
-    print(f"Total number of pixels in the dataset: {total_pixels}")
-    print(f"Percentage of valid pixels: {valid_pixels / total_pixels * 100:.2f}%")
-
-    dataset2 = TiledDataset(hls_data2, canopy_height_labels, tile_size=tile_size, overlap=overlap)
-
-    # Count non-NaN pixels of canopy height for img2
-    valid_pixels, total_pixels = dataset2.count_non_nan_pixels()
     print(f"Number of valid (non-NaN) pixels in the dataset: {valid_pixels}")
     print(f"Total number of pixels in the dataset: {total_pixels}")
     print(f"Percentage of valid pixels: {valid_pixels / total_pixels * 100:.2f}%")
@@ -122,14 +115,22 @@ def main(ctx, year, aoi):
         total_params = sum(p.numel() for p in model.parameters())
         trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         frozen_params = total_params - trainable_params
-        return total_params, trainable_params, frozen_params
+        print(f"Total parameters: {total_params / 1e6:.2f} M")
+        print(f"Trainable parameters: {trainable_params / 1e6:.2f} M")
+        print(f"Frozen parameters: {frozen_params / 1e6:.2f} M")
 
-    embed_dims = 768
+
+    # Create a Comet Logger
+    comet_logger = CometLogger(
+        api_key="YZiwsYqIN87kijoaS5atmnqqz",
+        project_name="prithvi-pytorch-lightning",
+        workspace="tagio"
+    )
 
     # Hyperparameters
     lr = 1e-3
-    batch_size = 16 # 8
-    epochs = 15 # 50, 100, 250, 500
+    batch_size = 16
+    epochs = 5
 
     hparams = {
             'lr': lr,
@@ -140,28 +141,23 @@ def main(ctx, year, aoi):
             'gamma': 0.1
         }
 
-    # Create DataLoaders
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=2)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=2)
-
-    # Create a Comet Logger
-    comet_logger = CometLogger(
-        api_key="YZiwsYqIN87kijoaS5atmnqqz",
-        project_name="prithvi-pytorch-lightning",
-        workspace="tagio"
+    # Initialize the PyTorch Profiler
+    profiler = PyTorchProfiler(
+        on_trace_ready=torch.profiler.tensorboard_trace_handler("./tb_logs/profiler"),
+        record_shapes=True,
+        profile_memory=True,
+        with_stack=True
     )
 
     # Initialize the model
-    model = CHLighteningModule(tile_size=50, patch_size=16, hparams=hparams)
+    model = CHLighteningModule(tile_size=50, patch_size=16, hparams=hparams, train_dataset=train_dataset, val_dataset=val_dataset, test_dataset=test_dataset)
 
-    total_params, trainable_params, frozen_params = count_parameters(model)
-
-    print(f"Total parameters: {total_params / 1e6:.2f} M")
-    print(f"Trainable parameters: {trainable_params / 1e6:.2f} M")
-    print(f"Frozen parameters: {frozen_params / 1e6:.2f} M")
+    # Print model parameters
+    count_parameters(model)
 
     early_stopping = EarlyStopping('val_loss', patience=7, mode='min', verbose=True)
+
+    tensorboard_logger = TensorBoardLogger("tb_logs", name="model_ch")
 
     # Initialize the PyTorch Lightning Trainer
     trainer = L.Trainer(
@@ -170,37 +166,32 @@ def main(ctx, year, aoi):
         accelerator='gpu' if torch.cuda.is_available() else 'cpu',
         precision='16-mixed',
         log_every_n_steps=1,
-        logger=comet_logger,
+        profiler=profiler,
+        logger=[comet_logger,tensorboard_logger],
         callbacks=[ModelCheckpoint(monitor='val_loss', mode='min'),
-                    LearningRateMonitor(logging_interval='epoch'),
+                    #LearningRateMonitor(logging_interval='epoch'),
                     early_stopping],
     )
 
-    # Learning Rate Finder
-    tuner = Tuner(trainer)
-    lr_finder = tuner.lr_find(model, train_dataloaders=train_loader)
-    fig = lr_finder.plot()
-    fig.show()
+    # # Learning Rate Finder
+    # tuner = Tuner(trainer)
+    # lr_finder = tuner.lr_find(model, train_dataloaders=train_loader)
+    # fig = lr_finder.plot()
+    # fig.show()
+    # tuner = Tuner(trainer)
+    #
+    # # Tuning Learning Rate
+    # lr_finder = tuner.lr_find(model)
+    # model.hparams.lr = lr_finder.suggestion()
 
-    # Get the suggested learning rate
-    new_lr = lr_finder.suggestion()
-    print(f"Suggested learning rate: {new_lr}")
-
-    # Update hyperparameters with the new learning rate
-    hparams['lr'] = new_lr
-    model.hparams.update(hparams)
-
-    # Reinitialize the model with the new learning rate
-    model = CHLighteningModule(tile_size=50, patch_size=16, hparams=hparams, train_len=len(train_loader))
-
-    # Train the model with the updated learning rate
-    trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader)
+    trainer.fit(model)
+    trainer.validate(model)
 
     # Save the best model
     torch.save(model.best_model_weights, best_model_path_new)
 
     # Test the model
-    trainer.test(model, dataloaders=test_loader)
+    trainer.test(model)
 
 
 if __name__ == "__main__":
