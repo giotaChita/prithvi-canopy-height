@@ -13,6 +13,7 @@ from model.train_test_loop import train_val_loop, test_loop
 import rasterio
 from rasterio.transform import from_origin, Affine
 from osgeo import gdal
+import os
 
 
 @click.command(
@@ -57,8 +58,8 @@ def main(ctx, year, aoi):
         (response1, userdata1, file_path1), (response2, userdata2, file_path2) = tiles
     else:
         # Load the save tiff hls images
-        file_path1 = '/media/giota/e0c77d18-e407-43fd-ad90-b6dd27f3ac38/Thesis/Model/Model_Code/src/results/hls_HLS.S30.T32TMS.2019045T103129.v2.0_2024-08-13_1307.tif'
-        file_path2 = '/media/giota/e0c77d18-e407-43fd-ad90-b6dd27f3ac38/Thesis/Model/Model_Code/src/results/hls_HLS.S30.T32TMS.2019052T102039.v2.0_2024-08-13_1302.tif'
+        file_path1 = os.getcwd() + '/results/hls_HLS.S30.T32TMS.2019045T103129.v2.0_2024-08-13_1307.tif'
+        file_path2 = os.getcwd() + '/results/hls_HLS.S30.T32TMS.2019052T102039.v2.0_2024-08-13_1302.tif'
 
         response1, t1 = load_tif_as_array(file_path1)
         response2, t2 = load_tif_as_array(file_path2)
@@ -144,7 +145,6 @@ def main(ctx, year, aoi):
     # the model
     patch_size = 16
 
-
     model = MaskedAutoencoderViT(img_size=tile_size, patch_size=patch_size,
                                  num_frames=1, tubelet_size=1, in_chans=6, embed_dim=768, depth=24, num_heads=16,
                                  decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
@@ -217,7 +217,7 @@ def main(ctx, year, aoi):
 
     # Save the combined predictions
     transform = Affine.from_gdal(*geotransform)
-    output_tiff_path = '/media/giota/e0c77d18-e407-43fd-ad90-b6dd27f3ac38/Thesis/Model/Model_Code/src/results/reconstructed_canopy_height_combined.tiff'
+    output_tiff_path = os.getcwd() + '/results/reconstructed_canopy_height_combined.tiff'
     out_meta = {
         'driver': 'GTiff',
         'dtype': 'float32',
