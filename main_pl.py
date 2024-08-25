@@ -129,8 +129,8 @@ def main(ctx, year, aoi):
 
     # Hyperparameters
     lr = 1e-3
-    batch_size = 16
-    epochs = 5
+    batch_size = 8 # 16
+    epochs = 30
 
     hparams = {
             'lr': lr,
@@ -141,13 +141,13 @@ def main(ctx, year, aoi):
             'gamma': 0.1
         }
 
-    # Initialize the PyTorch Profiler
-    profiler = PyTorchProfiler(
-        on_trace_ready=torch.profiler.tensorboard_trace_handler("./tb_logs/profiler"),
-        record_shapes=True,
-        profile_memory=True,
-        with_stack=True
-    )
+    # # Initialize the PyTorch Profiler
+    # profiler = PyTorchProfiler(
+    #     on_trace_ready=torch.profiler.tensorboard_trace_handler("./tb_logs/profiler"),
+    #     record_shapes=True,
+    #     profile_memory=True,
+    #     with_stack=True
+    # )
 
     # Initialize the model
     model = CHLighteningModule(tile_size=50, patch_size=16, hparams=hparams, train_dataset=train_dataset, val_dataset=val_dataset, test_dataset=test_dataset)
@@ -155,9 +155,9 @@ def main(ctx, year, aoi):
     # Print model parameters
     count_parameters(model)
 
-    early_stopping = EarlyStopping('val_loss', patience=7, mode='min', verbose=True)
+    early_stopping = EarlyStopping('val_loss', patience=10, mode='min', verbose=True)
 
-    tensorboard_logger = TensorBoardLogger("tb_logs", name="model_ch")
+    # tensorboard_logger = TensorBoardLogger("tb_logs", name="model_ch")
 
     # Initialize the PyTorch Lightning Trainer
     trainer = L.Trainer(
@@ -166,21 +166,25 @@ def main(ctx, year, aoi):
         accelerator='gpu' if torch.cuda.is_available() else 'cpu',
         precision='16-mixed',
         log_every_n_steps=1,
-        profiler=profiler,
-        logger=[comet_logger,tensorboard_logger],
+        profiler='simple' ,#profiler,
+        logger=comet_logger,
         callbacks=[ModelCheckpoint(monitor='val_loss', mode='min'),
-                    #LearningRateMonitor(logging_interval='epoch'),
+                    LearningRateMonitor(logging_interval='epoch'),
                     early_stopping],
+
     )
 
     # # Learning Rate Finder
     # tuner = Tuner(trainer)
-    # lr_finder = tuner.lr_find(model, train_dataloaders=train_loader)
-    # fig = lr_finder.plot()
-    # fig.show()
-    # tuner = Tuner(trainer)
+    # lr_finder = tuner.lr_find(model)
+    # fig = lr_finder.plot(); fig.show()
+    # suggested_lr = lr_finder.suggestion()
     #
-    # # Tuning Learning Rate
+    # hparams['lr'] = suggested_lr
+    # model = CHLighteningModule(tile_size=50, patch_size=16, hparams=hparams, train_dataset=train_dataset, val_dataset=val_dataset, test_dataset=test_dataset)
+
+
+    ## Tuning Learning Rate
     # lr_finder = tuner.lr_find(model)
     # model.hparams.lr = lr_finder.suggestion()
 

@@ -118,8 +118,17 @@ class CHLighteningModule(L.LightningModule):
         return pred
 
 
+    def configure_optimizers(self):
+        return optim.AdamW(self.parameters(),  self.hparams.lr)
+
     # def configure_optimizers(self):
-    #     return optim.Adam(self.parameters(),  self.hparams.lr)
+    #     optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr)
+    #     scheduler = get_linear_schedule_with_warmup(
+    #         optimizer,
+    #         num_warmup_steps=0,
+    #         num_training_steps=self.hparams.num_epochs
+    #     )
+    #     return [optimizer], [scheduler]
 
     def on_train_epoch_end(self):
         pass
@@ -136,14 +145,6 @@ class CHLighteningModule(L.LightningModule):
             self.best_val_mae = avg_val_mae
             self.best_model_weights = self.state_dict()
 
-    def configure_optimizers(self):
-        optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr)
-        scheduler = get_linear_schedule_with_warmup(
-            optimizer,
-            num_warmup_steps=0,
-            num_training_steps=self.hparams.num_epochs
-        )
-        return [optimizer], [scheduler]
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=self.hparams.batch_size, shuffle=True, num_workers=2)
