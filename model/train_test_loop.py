@@ -37,7 +37,7 @@ def train_val_loop(model,device, batch_size, patch_size, tile_size, train_loader
         num_param = {sum(p.numel() for p in model.parameters() if p.requires_grad)}
 
         num_epochs = 500
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+        # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
         scaler = torch.cuda.amp.GradScaler()
 
         # lists to store loss values

@@ -184,99 +184,111 @@ def normalize_data(data):
         normalized_data = data
     return normalized_data
 
-def align_images(predicted, ground_truth):
-    """
-    Crop or pad images to ensure they have the same dimensions.
-
-    Args:
-        predicted (numpy array): The predicted image data.
-        ground_truth (numpy array): The ground truth image data.
-
-    Returns:
-        tuple: Cropped or padded images.
-    """
-    min_height = min(predicted.shape[0], ground_truth.shape[0])
-    min_width = min(predicted.shape[1], ground_truth.shape[1])
-
-    # Crop or pad both images to the same size
-    cropped_predicted = predicted[:min_height, :min_width]
-    cropped_ground_truth = ground_truth[:min_height, :min_width]
-
-    return cropped_predicted, cropped_ground_truth
-
 
 # Paths to the TIFF files
-
 predicted_tiff_path = '/media/giota/e0c77d18-e407-43fd-ad90-b6dd27f3ac38/Thesis/Model/Model_Code/src/results/reconstructed_canopy_height_combined.tiff'
 ground_truth_tiff_path = '/media/giota/e0c77d18-e407-43fd-ad90-b6dd27f3ac38/Thesis/Model/Model_Code/src/data/GroundTruth_CHE_switzerland_2019_10m.tif'
 resampled_ground_truth_tiff_path = '/media/giota/e0c77d18-e407-43fd-ad90-b6dd27f3ac38/Thesis/Model/Model_Code/src/data/resampled_ground_truth_canopy_height_30m.tiff'
 predicted_tiff_path_rep = '/media/giota/e0c77d18-e407-43fd-ad90-b6dd27f3ac38/Thesis/Model/Model_Code/src/results/reconstructed_canopy_height_combined_30.tiff'
 
+# ground_truth_data, ground_truth_meta = read_tiff(ground_truth_tiff_path)
 
-# Paths to the TIFF files
-input_tiff_path = ground_truth_tiff_path
-output_tiff_path = '/media/giota/e0c77d18-e407-43fd-ad90-b6dd27f3ac38/Thesis/Model/Model_Code/src/data/GroundTruth_CHE_switzerland_2019_10m_WGS.tif'
-ground_truth_tiff_path = output_tiff_path
-# Reproject the TIFF to WGS 84
-# reproject_tiff(input_tiff_path, output_tiff_path)
-ground_truth_data, ground_truth_meta = read_tiff(ground_truth_tiff_path)
-# Resample the ground truth data
 
-# Original and new resolutions
-original_resolution = 10
-new_resolution = 30
-resampled_ground_truth = resample_image(ground_truth_data, original_resolution, new_resolution)
-
-save_tiff(resampled_ground_truth, ground_truth_meta, resampled_ground_truth_tiff_path)
+# Open the ground truth GeoTIFF
+with rasterio.open(ground_truth_tiff_path) as src:
+    ground_truth = src.read(
+        out_shape=(src.count, 512, 512),  # Match the dimensions of the predicted data
+        resampling=Resampling.bilinear  # Or choose another method
+    )
 
 # Load the data
-predicted_data, predicted_meta = read_tiff(predicted_tiff_path)
-ground_truth_data, ground_truth_meta = read_tiff(resampled_ground_truth_tiff_path)
+with rasterio.open(predicted_tiff_path) as src:
+    predicted = src.read(
+        out_shape=(src.count, 512, 512),
+        resampling=Resampling.bilinear
+    )
 
-# Align the images
-aligned_predicted, aligned_ground_truth = align_images(predicted_data, ground_truth_data)
+valid_min = 0
+# Mask invalid data
+ground_truth[ground_truth < valid_min] = np.nan
+ground_truth = np.nan_to_num(ground_truth, nan=0)
 
-# Calculate metrics
-mae, rmse, r2 = compute_metrics(aligned_predicted, aligned_ground_truth)
+# Flatten the arrays to 1D
+ground_truth_flat = ground_truth.flatten()
+predicted_flat = predicted.flatten()
 
-print(f"Mean Absolute Error (MAE): {mae:.4f}")
-print(f"Root Mean Squared Error (RMSE): {rmse:.4f}")
-print(f"R-squared (R2): {r2:.4f}")
+# Check for infinite or NaN values in ground_truth and predicted arrays
+print("Ground Truth - Any NaN or Inf values? ", np.any(np.isnan(ground_truth)) or np.any(np.isinf(ground_truth)))
+print("Predicted - Any NaN or Inf values? ", np.any(np.isnan(predicted)) or np.any(np.isinf(predicted)))
+print("Ground Truth - Min, Max values: ", np.min(ground_truth_flat), np.max(ground_truth_flat))
+print("Predicted - Min, Max values: ", np.min(predicted_flat), np.max(predicted_flat))
 
-# Check statistics for both datasets
-check_statistics(predicted_data, "Predicted Data")
-check_statistics(ground_truth_data, "Ground Truth Data")
+# Ensure there are no NaN or Inf values
+ground_truth_flat = np.nan_to_num(ground_truth_flat, nan=0, posinf=0, neginf=0)
+predicted_flat = np.nan_to_num(predicted_flat, nan=0, posinf=0, neginf=0)
 
-
-# Handle extreme values in both datasets
-handled_predicted = handle_extreme_values(predicted_data)
-handled_ground_truth = handle_extreme_values(ground_truth_data)
-
-aligned_predicted_2, aligned_ground_truth_2 = align_images(handled_predicted, handled_ground_truth)
-
-# Calculate metrics
-mae, rmse, r2 = compute_metrics(aligned_predicted_2, aligned_ground_truth_2)
-
-print(f"Mean Absolute Error (MAE): {mae:.4f}")
-print(f"Root Mean Squared Error (RMSE): {rmse:.4f}")
-print(f"R-squared (R2): {r2:.4f}")
-
-
-# Normalize the datasets
-normalized_predicted = normalize_data(handled_predicted)
-normalized_ground_truth = normalize_data(handled_ground_truth)
+mae = mean_absolute_error(ground_truth_flat, predicted_flat)
+print(f"Mean Absolute Error (MAE): {mae}")
+mse = mean_squared_error(ground_truth_flat, predicted_flat)
+rmse = np.sqrt(mse)
+print(f"Root Mean Square Error (RMSE): {rmse}")
+r2 = r2_score(ground_truth_flat, predicted_flat)
+print(f"R² (Coefficient of Determination): {r2}")
 
 
-# Align images
-aligned_predicted, aligned_ground_truth = align_images(normalized_predicted, normalized_ground_truth)
-# Check statistics for both datasets
-check_statistics(handled_predicted, "Predicted Data")
-check_statistics(handled_ground_truth, "Ground Truth Data")
+
+# # Original and new resolutions
+# original_resolution = 10
+# new_resolution = 30
+#
+# resampled_ground_truth = resample_image(ground_truth_data, original_resolution, new_resolution)
+
+# save_tiff(resampled_ground_truth, ground_truth_meta, resampled_ground_truth_tiff_path)
 
 
-# Calculate metrics
-mae, rmse, r2 = compute_metrics(aligned_predicted, aligned_ground_truth)
 
-print(f"Mean Absolute Error (MAE): {mae:.4f}")
-print(f"Root Mean Squared Error (RMSE): {rmse:.4f}")
-print(f"R-squared (R2): {r2:.4f}")
+# ground_truth_data, ground_truth_meta = read_tiff(resampled_ground_truth_tiff_path)
+
+# # Align the images
+# aligned_predicted, aligned_ground_truth = align_images(predicted_data, ground_truth_data)
+#
+# # Calculate metrics
+# mae, rmse, r2 = compute_metrics(aligned_predicted, aligned_ground_truth)
+#
+# print(f"Mean Absolute Error (MAE): {mae:.4f}")
+# print(f"Root Mean Squared Error (RMSE): {rmse:.4f}")
+# print(f"R-squared (R2): {r2:.4f}")
+#
+# # Check statistics for both datasets
+# check_statistics(predicted_data, "Predicted Data")
+# check_statistics(ground_truth_data, "Ground Truth Data")
+#
+# # Handle extreme values in both datasets
+# handled_predicted = handle_extreme_values(predicted_data)
+# handled_ground_truth = handle_extreme_values(ground_truth_data)
+#
+# aligned_predicted_2, aligned_ground_truth_2 = align_images(handled_predicted, handled_ground_truth)
+#
+# # Calculate metrics
+# mae, rmse, r2 = compute_metrics(aligned_predicted_2, aligned_ground_truth_2)
+#
+# print(f"Mean Absolute Error (MAE): {mae:.4f}")
+# print(f"Root Mean Squared Error (RMSE): {rmse:.4f}")
+# print(f"R-squared (R2): {r2:.4f}")
+#
+# # Normalize the datasets
+# normalized_predicted = normalize_data(handled_predicted)
+# normalized_ground_truth = normalize_data(handled_ground_truth)
+#
+# # Align images
+# aligned_predicted, aligned_ground_truth = align_images(normalized_predicted, normalized_ground_truth)
+# # Check statistics for both datasets
+# check_statistics(handled_predicted, "Predicted Data")
+# check_statistics(handled_ground_truth, "Ground Truth Data")
+#
+# # Calculate metrics
+# mae, rmse, r2 = compute_metrics(aligned_predicted, aligned_ground_truth)
+#
+# print(f"Mean Absolute Error (MAE): {mae:.4f}")
+# print(f"Root Mean Squared Error (RMSE): {rmse:.4f}")
+# print(f"R-squared (R2): {r2:.4f}")

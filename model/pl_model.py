@@ -80,7 +80,7 @@ class CHLighteningModule(L.LightningModule):
 
     def training_step(self, batch, batch_idx):
 
-        loss, mae,_,_ = self.common_step(batch, batch_idx)
+        loss, mae, _, _ = self.common_step(batch, batch_idx)
 
         # Log loss and MAE
         self.log('train_loss', loss, prog_bar=True)
@@ -92,8 +92,8 @@ class CHLighteningModule(L.LightningModule):
         loss, mae,_,_ = self.common_step(batch, batch_idx)
 
         # Log loss and MAE
-        self.log('val_loss', loss)
-        self.log('val_mae', mae)
+        self.log('val_loss', loss, prog_bar=False)
+        self.log('val_mae', mae, prog_bar=False)
         # self.log_dict({'val_loss': loss, "val_mae": mae})
 
         self.val_losses.append(loss.item())
@@ -118,20 +118,29 @@ class CHLighteningModule(L.LightningModule):
         return pred
 
 
-    def configure_optimizers(self):
-        return optim.AdamW(self.parameters(),  self.hparams.lr)
+    # def configure_optimizers(self):
+    #     return optim.AdamW(self.parameters(),  self.hparams.lr)
 
     # def configure_optimizers(self):
     #     optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr)
-    #     scheduler = get_linear_schedule_with_warmup(
-    #         optimizer,
-    #         num_warmup_steps=0,
-    #         num_training_steps=self.hparams.num_epochs
-    #     )
+    #     scheduler = {
+    #         'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08),
+    #         'monitor': 'average val_loss'
+    #     }
+    #
+    #     # # scheduler1 = optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=self.hparams.step_size, gamma=self.hparams.gamma)
+    #     # scheduler2 = get_linear_schedule_with_warmup(
+    #     #     optimizer,
+    #     #     num_warmup_steps=0,
+    #     #     num_training_steps=self.hparams.num_epochs
+    #     # )
     #     return [optimizer], [scheduler]
 
-    def on_train_epoch_end(self):
-        pass
+    def configure_optimizers(self):
+        optimizer = optim.AdamW(self.model.parameters(), lr=self.hparams['lr'])
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=3, factor=0.5)
+        return {'optimizer': optimizer, 'lr_scheduler': {'scheduler': scheduler, 'monitor': 'average val_loss'}}
+
 
     def on_validation_epoch_end(self):
         avg_val_loss = np.mean(self.val_losses) if self.val_losses else float('inf')
@@ -144,7 +153,6 @@ class CHLighteningModule(L.LightningModule):
         if avg_val_mae < self.best_val_mae:
             self.best_val_mae = avg_val_mae
             self.best_model_weights = self.state_dict()
-
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=self.hparams.batch_size, shuffle=True, num_workers=2)

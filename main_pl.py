@@ -76,7 +76,7 @@ def main(ctx, year, aoi):
     geotransform = ds.GetGeoTransform()
     input_crs = ds.GetProjection()
 
-    # TODO: find a better way to represent the heigth from gedi shots
+    # TODO: find a better way to represent the height from gedi shots
 
     # set to true this the first time if you have not saved the gedi shots to npy file
     download_gedi_shots = False
@@ -127,17 +127,17 @@ def main(ctx, year, aoi):
         workspace="tagio"
     )
 
-    # Hyperparameters
+    # parameters
     lr = 1e-3
     batch_size = 8 # 16
-    epochs = 30
+    epochs = 300
 
     hparams = {
             'lr': lr,
             'batch_size': batch_size,
             'num_epochs': epochs,
-            'log_interval': 2,
-            'step_size': 2,
+            'log_interval': 3,
+            'step_size':  2,
             'gamma': 0.1
         }
 
@@ -150,12 +150,12 @@ def main(ctx, year, aoi):
     # )
 
     # Initialize the model
-    model = CHLighteningModule(tile_size=50, patch_size=16, hparams=hparams, train_dataset=train_dataset, val_dataset=val_dataset, test_dataset=test_dataset)
+    model = CHLighteningModule(tile_size=tile_size, patch_size=16, hparams=hparams, train_dataset=train_dataset, val_dataset=val_dataset, test_dataset=test_dataset)
 
     # Print model parameters
     count_parameters(model)
 
-    early_stopping = EarlyStopping('val_loss', patience=10, mode='min', verbose=True)
+    early_stopping = EarlyStopping('average val_loss', patience=10, mode='min', verbose=True)
 
     # tensorboard_logger = TensorBoardLogger("tb_logs", name="model_ch")
 
@@ -166,27 +166,23 @@ def main(ctx, year, aoi):
         accelerator='gpu' if torch.cuda.is_available() else 'cpu',
         precision='16-mixed',
         log_every_n_steps=1,
+        gradient_clip_val=0.5,
         profiler='simple' ,#profiler,
         logger=comet_logger,
-        callbacks=[ModelCheckpoint(monitor='val_loss', mode='min'),
+        callbacks=[ModelCheckpoint(monitor='average val_loss', mode='min'),
                     LearningRateMonitor(logging_interval='epoch'),
                     early_stopping],
 
     )
-
+    #
     # # Learning Rate Finder
     # tuner = Tuner(trainer)
     # lr_finder = tuner.lr_find(model)
-    # fig = lr_finder.plot(); fig.show()
+    # # fig = lr_finder.plot(); fig.show()
     # suggested_lr = lr_finder.suggestion()
     #
     # hparams['lr'] = suggested_lr
     # model = CHLighteningModule(tile_size=50, patch_size=16, hparams=hparams, train_dataset=train_dataset, val_dataset=val_dataset, test_dataset=test_dataset)
-
-
-    ## Tuning Learning Rate
-    # lr_finder = tuner.lr_find(model)
-    # model.hparams.lr = lr_finder.suggestion()
 
     trainer.fit(model)
     trainer.validate(model)

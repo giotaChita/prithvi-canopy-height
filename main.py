@@ -101,12 +101,6 @@ def main(ctx, year, aoi):
 
     dataset2 = TiledDataset(hls_data2, canopy_height_labels, tile_size=tile_size, overlap=overlap)
 
-    # Count non-NaN pixels of canopy height for img2
-    valid_pixels, total_pixels = dataset2.count_non_nan_pixels()
-    print(f"Number of valid (non-NaN) pixels in the dataset: {valid_pixels}")
-    print(f"Total number of pixels in the dataset: {total_pixels}")
-    print(f"Percentage of valid pixels: {valid_pixels / total_pixels * 100:.2f}%")
-
     # Combine the two images
     dataset = dataset1 + dataset2
 
