@@ -51,7 +51,7 @@ def read_tiff(tiff_path):
     return data, meta
 
 
-def resample_image(data, old_res, new_res):
+def resample_image1(data, old_res, new_res):
     """
     Resample image from 10m res to 30m res with bilinear interpolation
     Args:
@@ -197,16 +197,13 @@ predicted_tiff_path_rep = '/media/giota/e0c77d18-e407-43fd-ad90-b6dd27f3ac38/The
 # Open the ground truth GeoTIFF
 with rasterio.open(ground_truth_tiff_path) as src:
     ground_truth = src.read(
-        out_shape=(src.count, 512, 512),  # Match the dimensions of the predicted data
-        resampling=Resampling.bilinear  # Or choose another method
+        out_shape=(src.count, 512, 512),  # Match the dim with the predicted
+        resampling=Resampling.bilinear
     )
 
 # Load the data
 with rasterio.open(predicted_tiff_path) as src:
-    predicted = src.read(
-        out_shape=(src.count, 512, 512),
-        resampling=Resampling.bilinear
-    )
+    predicted = src.read(1)
 
 valid_min = 0
 # Mask invalid data
@@ -227,6 +224,8 @@ print("Predicted - Min, Max values: ", np.min(predicted_flat), np.max(predicted_
 ground_truth_flat = np.nan_to_num(ground_truth_flat, nan=0, posinf=0, neginf=0)
 predicted_flat = np.nan_to_num(predicted_flat, nan=0, posinf=0, neginf=0)
 
+print("\n--------METHOD 1---------")
+
 mae = mean_absolute_error(ground_truth_flat, predicted_flat)
 print(f"Mean Absolute Error (MAE): {mae}")
 mse = mean_squared_error(ground_truth_flat, predicted_flat)
@@ -235,7 +234,60 @@ print(f"Root Mean Square Error (RMSE): {rmse}")
 r2 = r2_score(ground_truth_flat, predicted_flat)
 print(f"R² (Coefficient of Determination): {r2}")
 
+# METHOD 2
+print("\n--------METHOD 2---------")
 
+# Function to read TIFF data with rasterio
+def read_tiff_with_rasterio(tiff_path):
+    with rasterio.open(tiff_path) as src:
+        data = src.read(1)  # Read the first band
+        meta = src.meta  # Save metadata
+    return data, meta
+
+# Read predicted data with rasterio
+predicted, predicted_meta = read_tiff_with_rasterio(predicted_tiff_path)
+
+# Read ground truth data with rasterio
+ground_truth, ground_truth_meta = read_tiff_with_rasterio(ground_truth_tiff_path)
+
+# Define the target size (512, 512)
+target_size = (512, 512)
+
+# Perform resampling using scipy
+def resample_image(image, target_size):
+    original_shape = image.shape
+    zoom_factors = (target_size[0] / original_shape[0], target_size[1] / original_shape[1])
+    return zoom(image, zoom_factors, order=1)  # order=1 is bilinear interpolation
+
+# Resample ground truth to match the dimensions of predicted
+resampled_ground_truth = resample_image(ground_truth, target_size)
+
+# Handle NaN values by replacing them with zeros
+resampled_ground_truth = np.nan_to_num(resampled_ground_truth, nan=0)
+predicted = np.nan_to_num(predicted, nan=0)
+
+# Ensure dimensions match
+if resampled_ground_truth.shape != predicted.shape:
+    raise ValueError(f"Dimension mismatch: resampled_ground_truth shape {resampled_ground_truth.shape}, predicted shape {predicted.shape}")
+resampled_ground_truth[resampled_ground_truth < valid_min] = np.nan
+resampled_ground_truth = np.nan_to_num(resampled_ground_truth, nan=0)
+
+# Flatten the arrays to 1D
+ground_truth_flat = resampled_ground_truth.flatten()
+predicted_flat = predicted.flatten()
+
+# Calculate Mean Absolute Error (MAE)
+mae = mean_absolute_error(ground_truth_flat, predicted_flat)
+print(f"Mean Absolute Error (MAE): {mae}")
+
+# Calculate Root Mean Square Error (RMSE)
+mse = mean_squared_error(ground_truth_flat, predicted_flat)
+rmse = np.sqrt(mse)
+print(f"Root Mean Square Error (RMSE): {rmse}")
+
+# Calculate R² (Coefficient of Determination)
+r2 = r2_score(ground_truth_flat, predicted_flat)
+print(f"R² (Coefficient of Determination): {r2}")
 
 # # Original and new resolutions
 # original_resolution = 10
