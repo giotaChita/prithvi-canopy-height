@@ -25,13 +25,13 @@ class TiledDataset(Dataset):
         row_starts = np.arange(0, image_height - self.tile_size + 1, step_size)
         col_starts = np.arange(0, image_width - self.tile_size + 1, step_size)
 
-        # Ensure the last tile reaches the edge of the image
+        # last tile reaches the edge of the image
         if (image_height - self.tile_size) % step_size != 0:
             row_starts = np.append(row_starts, image_height - self.tile_size)
         if (image_width - self.tile_size) % step_size != 0:
             col_starts = np.append(col_starts, image_width - self.tile_size)
 
-        # Create a meshgrid of the start points
+        # meshgrid of the start points
         grid_r, grid_c = np.meshgrid(row_starts, col_starts, indexing='ij')
         tile_start_points = np.stack([grid_r.ravel(), grid_c.ravel()], axis=-1)
 
@@ -101,11 +101,11 @@ def canopy_height_GEDI(hls_path, response):
 
             # Convert latitude and longitude to pixel coordinates in  image
             pixel_x, pixel_y = latlon_to_pixel(lat, lon, geotransform)
-            # Define the region around the pixel coordinates
-            patch_x_start = max(0, pixel_x)
-            patch_x_end = min(band_data.shape[1], pixel_x)
-            patch_y_start = max(0, pixel_y )
-            patch_y_end = min(band_data.shape[0], pixel_y)
+            # # Define the region around the pixel coordinates
+            # patch_x_start = max(0, pixel_x)
+            # patch_x_end = min(band_data.shape[1], pixel_x)
+            # patch_y_start = max(0, pixel_y )
+            # patch_y_end = min(band_data.shape[0], pixel_y)
 
             # canopy_height_labels[patch_y_start:patch_y_end, patch_x_start:patch_x_end] = canopy_height
             canopy_height_labels[pixel_y, pixel_x] = canopy_height
