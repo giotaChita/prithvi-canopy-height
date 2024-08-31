@@ -186,7 +186,7 @@ def normalize_data(data):
 
 
 # Paths to the TIFF files
-predicted_tiff_path = '/media/giota/e0c77d18-e407-43fd-ad90-b6dd27f3ac38/Thesis/Model/Model_Code/src/results/reconstructed_canopy_height_combined.tiff'
+predicted_tiff_path = '/media/giota/e0c77d18-e407-43fd-ad90-b6dd27f3ac38/Thesis/Model/Model_Code/src/results/reconstructed_canopy_height_combined_2.tiff'
 ground_truth_tiff_path = '/media/giota/e0c77d18-e407-43fd-ad90-b6dd27f3ac38/Thesis/Model/Model_Code/src/data/GroundTruth_CHE_switzerland_2019_10m.tif'
 resampled_ground_truth_tiff_path = '/media/giota/e0c77d18-e407-43fd-ad90-b6dd27f3ac38/Thesis/Model/Model_Code/src/data/resampled_ground_truth_canopy_height_30m.tiff'
 predicted_tiff_path_rep = '/media/giota/e0c77d18-e407-43fd-ad90-b6dd27f3ac38/Thesis/Model/Model_Code/src/results/reconstructed_canopy_height_combined_30.tiff'

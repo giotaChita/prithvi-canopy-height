@@ -203,28 +203,28 @@ def main(ctx, year, aoi):
         return reconstruct_image_merge(predictions, tile_size, overlap, (img_height, img_width))
 
     # Predict and reconstruct for both images
-    reconstructed_predictions1 = predict_and_reconstruct(hls_data1, model, tile_size=50, overlap=25)
-    reconstructed_predictions2 = predict_and_reconstruct(hls_data2, model, tile_size=50, overlap=25)
-
-    # Combine predictions from both images
-    combined_predictions = np.minimum(reconstructed_predictions1, reconstructed_predictions2)
-
-    # Save the combined predictions
-    transform = Affine.from_gdal(*geotransform)
-    output_tiff_path = os.getcwd() + '/results/reconstructed_canopy_height_combined.tiff'
-    out_meta = {
-        'driver': 'GTiff',
-        'dtype': 'float32',
-        'nodata': None,
-        'width': hls_data1.shape[2],
-        'height': hls_data1.shape[1],
-        'count': 1,
-        'crs': input_crs,
-        'transform': transform
-    }
-
-    with rasterio.open(output_tiff_path, 'w', **out_meta) as dst:
-        dst.write(combined_predictions, 1)
+    # reconstructed_predictions1 = predict_and_reconstruct(hls_data1, model, tile_size=50, overlap=25)
+    # reconstructed_predictions2 = predict_and_reconstruct(hls_data2, model, tile_size=50, overlap=25)
+    #
+    # # Combine predictions from both images
+    # combined_predictions = np.minimum(reconstructed_predictions1, reconstructed_predictions2)
+    #
+    # # Save the combined predictions
+    # transform = Affine.from_gdal(*geotransform)
+    # output_tiff_path = os.getcwd() + '/results/reconstructed_canopy_height_combined_2.tiff'
+    # out_meta = {
+    #     'driver': 'GTiff',
+    #     'dtype': 'float32',
+    #     'nodata': None,
+    #     'width': hls_data1.shape[2],
+    #     'height': hls_data1.shape[1],
+    #     'count': 1,
+    #     'crs': input_crs,
+    #     'transform': transform
+    # }
+    #
+    # with rasterio.open(output_tiff_path, 'w', **out_meta) as dst:
+    #     dst.write(combined_predictions, 1)
 
     ### Method 2 ###
 
@@ -234,8 +234,8 @@ def main(ctx, year, aoi):
     train_dataset, val_dataset, test_dataset = random_split(dataset, [0, 0, test_size])
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-    # dataset = TiledDataset(hls_data1, canopy_height_labels, tile_size=50, overlap=25)
-    # test_loader = DataLoader(dataset, batch_size=1, shuffle=False)
+    dataset = TiledDataset(hls_data1, canopy_height_labels, tile_size=50, overlap=25)
+    test_loader = DataLoader(dataset, batch_size=1, shuffle=False)
 
     # Test loop - img
 
@@ -263,20 +263,49 @@ def main(ctx, year, aoi):
     print(f"Test Loss: {test_loss:.4f}")
     print(f"Test MAE: {test_mae:.4f}, Test RMSE: {test_rmse:.4f}, Test R-squared: {test_r2:.4f}")
 
-    # # Plotting final results
-    # plt.figure(figsize=(12, 6))
-    # plt.subplot(1, 2, 1)
-    # plt.imshow(predictions_test[0, :, :], cmap='viridis')
-    # plt.title('Predicted Canopy Heights')
-    # plt.colorbar()
-    #
-    # plt.subplot(1, 2, 2)
-    # plt.imshow(targets_test[0, :, :], cmap='viridis')
-    # plt.title('Ground Truth Canopy Heights')
-    # plt.colorbar()
-    # plt.tight_layout()
-    # plt.show()
+    # Plotting final results
+    plt.figure(figsize=(12, 6))
+    plt.subplot(1, 2, 1)
+    plt.imshow(predictions_test[16, :, :], cmap='viridis',vmin=0, vmax=50)
+    plt.title('Predicted Canopy Heights')
+    plt.colorbar()
 
+    plt.subplot(1, 2, 2)
+    plt.imshow(targets_test[16, :, :], cmap='viridis',vmin=0, vmax=50)
+    plt.title('Ground Truth Canopy Heights')
+    plt.colorbar()
+    plt.tight_layout()
+    plt.show()
+
+
+    # Plotting final results
+    plt.figure(figsize=(12, 6))
+    plt.subplot(1, 2, 1)
+    plt.imshow(predictions_test[40, :, :], cmap='viridis',vmin=0, vmax=50)
+    plt.title('Predicted Canopy Heights')
+    plt.colorbar()
+
+    plt.subplot(1, 2, 2)
+    plt.imshow(targets_test[40, :, :], cmap='viridis',vmin=0, vmax=50)
+    plt.title('Ground Truth Canopy Heights')
+    plt.colorbar()
+    plt.tight_layout()
+    plt.show()
+
+
+    # Plotting final results
+    plt.figure(figsize=(12, 6))
+    plt.subplot(1, 2, 1)
+    plt.imshow(predictions_test[39, :, :], cmap='viridis',vmin=0, vmax=50)
+    plt.title('Predicted Canopy Heights')
+    plt.colorbar()
+
+    plt.subplot(1, 2, 2)
+    plt.imshow(targets_test[39, :, :], cmap='viridis',vmin=0, vmax=50)
+    plt.title('Ground Truth Canopy Heights')
+    plt.colorbar()
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == "__main__":
     main()
