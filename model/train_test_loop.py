@@ -1,7 +1,7 @@
 from comet_ml import Experiment
 from comet_ml.integration.pytorch import log_model
 import torch
-from utils.config import pretrained_model_path, best_model_path
+from utils.config import pretrained_model_path, best_model_path_new
 import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
@@ -36,7 +36,7 @@ def train_val_loop(model,device, batch_size, patch_size, tile_size, train_loader
         print(f"Number of trainable parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
         num_param = {sum(p.numel() for p in model.parameters() if p.requires_grad)}
 
-        num_epochs = 500
+        num_epochs = 100
         # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
         scaler = torch.cuda.amp.GradScaler()
 
@@ -63,7 +63,8 @@ def train_val_loop(model,device, batch_size, patch_size, tile_size, train_loader
             'num_epochs': num_epochs,
             'tile_size': tile_size,
             'patch_size': patch_size,
-            'embed_dim': 768
+            'embed_dim': 768,
+            'rh metric:': 'rh99'
         })
 
         model.to(device)
@@ -181,7 +182,7 @@ def train_val_loop(model,device, batch_size, patch_size, tile_size, train_loader
                 # log_model(experiment, model=model, model_name="BestModel")
 
         # Save the best model
-        torch.save(best_model_state, best_model_path)
+        torch.save(best_model_state, best_model_path_new)
 
         # Plot the training and validation losses
         plt.figure(figsize=(10, 5))

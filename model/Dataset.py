@@ -4,7 +4,7 @@ from utils.utils import preprocess_image
 from utils.gedi_data import load_gedi_shots
 from torch.utils.data import Dataset
 from utils.utils import latlon_to_pixel
-from utils.config import cache_path, gedi_path2, gedi_path1
+from utils.config import cache_path_rh98, gedi_path2, gedi_path1, cache_path_rh99
 import torch
 
 
@@ -97,7 +97,7 @@ def canopy_height_GEDI(hls_path, response):
         for index, row in gedi_shots.iterrows():
             lat = row['Latitude']
             lon = row['Longitude']
-            canopy_height = row['Canopy Height (rh100)']
+            canopy_height = row['Canopy Height (rh99)']
 
             # Convert latitude and longitude to pixel coordinates in  image
             pixel_x, pixel_y = latlon_to_pixel(lat, lon, geotransform)
@@ -111,7 +111,7 @@ def canopy_height_GEDI(hls_path, response):
             canopy_height_labels[pixel_y, pixel_x] = canopy_height
 
     canopy_height_labels = np.where(canopy_height_labels==0, np.nan, canopy_height_labels)
-    np.save(cache_path, canopy_height_labels)
+    np.save(cache_path_rh99, canopy_height_labels)
     return canopy_height_labels, gedi_shots
 
 
