@@ -1,5 +1,5 @@
 import click
-from utils.config import cache_path_rh98, device, best_model_path_new, cache_path, cache_path_rh99,pretrained_model_path, best_model_path
+from utils.config import cache_path_rh98, device, best_model_path_new, cache_path, cache_path_rh99,pretrained_model_path, best_model_path, cache_path_aoi3_gedi_shots_rh98_size1024
 from model.Dataset import canopy_height_GEDI, TiledDataset, preprocess_data
 from utils.utils import load_hls_with_request2, compute_metrics, plot_loaders, preprocess_image, \
     load_model_with_checkpoint, load_tif_as_array
@@ -58,8 +58,21 @@ def main(ctx, year, aoi):
         (response1, userdata1, file_path1), (response2, userdata2, file_path2) = tiles
     else:
         # Load the save tiff hls images
-        file_path1 = os.getcwd() + '/results/hls_HLS.S30.T32TMS.2019045T103129.v2.0_2024-08-13_1307.tif'
-        file_path2 = os.getcwd() + '/results/hls_HLS.S30.T32TMS.2019052T102039.v2.0_2024-08-13_1302.tif'
+
+        ## aoi 2
+        # file_path1 = os.getcwd() + '/results/hls_HLS.S30.T32TMS.2019045T103129.v2.0_2024-08-13_1307.tif'
+        # file_path2 = os.getcwd() + '/results/hls_HLS.S30.T32TMS.2019052T102039.v2.0_2024-08-13_1302.tif'
+
+        # # aoi 3, hls size 512
+        # file_path1 = os.getcwd() + '/results/hls_HLS.S30.T32TLT.2019080T103021.v2.0_2024-09-01_2127.tif'
+        # file_path2 = os.getcwd() + '/results/hls_HLS.S30.T32TMT.2019110T103031.v2.0_2024-09-01_2127.tif'
+        #
+        # response1, t1 = load_tif_as_array(file_path1)
+        # response2, t2 = load_tif_as_array(file_path2)
+
+        # aoi 3 , hls size 1024
+        file_path1 = os.getcwd() + '/results/hls_HLS.S30.T32TLT.2019080T103021.v2.0_2024-09-01_2241.tif'
+        file_path2 = os.getcwd() + '/results/hls_HLS.S30.T32TMT.2019110T103031.v2.0_2024-09-01_2241.tif'
 
         response1, t1 = load_tif_as_array(file_path1)
         response2, t2 = load_tif_as_array(file_path2)
@@ -83,13 +96,13 @@ def main(ctx, year, aoi):
     if download_gedi_shots:
         canopy_height_labels, _ = canopy_height_GEDI(file_path1, response1)
         canopy_height_labels = torch.tensor(canopy_height_labels, dtype=torch.float32)
-
     else:
         canopy_height_labels_rh98 = np.load(cache_path_rh98)
-        # canopy_height_labels_rh99 = np.load(cache_path_rh99)
-        # canopy_height_labels_rh100 = np.load(cache_path)
+        canopy_height_labels_rh99 = np.load(cache_path_rh99)
+        canopy_height_labels_rh100 = np.load(cache_path)
 
-        canopy_height_labels = torch.tensor(canopy_height_labels_rh98, dtype=torch.float32)
+        canopy_height_labels_rh98_hls1024 = np.load(cache_path_aoi3_gedi_shots_rh98_size1024)
+        canopy_height_labels = torch.tensor(canopy_height_labels_rh98_hls1024, dtype=torch.float32)
 
     compare = False
 
@@ -127,7 +140,7 @@ def main(ctx, year, aoi):
     hls_data1, response1 = preprocess_data(response1)
     hls_data2, response2 = preprocess_data(response2)
 
-    tile_size = 60
+    tile_size = 100
     # overlap = tile_size // 2
     overlap = 0
     dataset1 = TiledDataset(hls_data1, canopy_height_labels, tile_size=tile_size, overlap=overlap)
@@ -185,7 +198,7 @@ def main(ctx, year, aoi):
 
     # print(f"Number of trainable parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}, Trainable layers: {trainable_layers}")
 
-    train = True # Set to true to rerun the training, validation, test process
+    train = True  # Set to true to rerun the training, validation, test process
 
     if train:
         # Train and Validation Loop
@@ -195,14 +208,79 @@ def main(ctx, year, aoi):
     weight = '/media/giota/e0c77d18-e407-43fd-ad90-b6dd27f3ac38/Thesis/Model/Model_Code/src/model/save_load_model/best_model_state_2024_08_31_163305.pth'
     weight2 = '/media/giota/e0c77d18-e407-43fd-ad90-b6dd27f3ac38/Thesis/Model/Model_Code/src/model/save_load_model/best_model_state_2024_09_01_124424.pth'
     # model.load_state_dict(torch.load(weight))
-    exit()
-    model.load_state_dict(torch.load(weight2))
+    # exit()
+    model.load_state_dict(torch.load(best_model_path))
     model.to(device)
 
     test = True
     if test:
         # Test loop
         test_loop(model, test_loader, device)
+
+    ### Method 1 ###
+
+    # def reconstruct_image_merge(tiles, tile_size, overlap, img_size):
+    #     reconstructed_img = np.zeros(img_size, dtype=np.float32)
+    #     count_matrix = np.zeros(img_size, dtype=np.float32)
+    #
+    #     grid_size_y = (img_size[0] - overlap) // (tile_size - overlap)
+    #     grid_size_x = (img_size[1] - overlap) // (tile_size - overlap)
+    #
+    #     idx = 0
+    #     for i in range(grid_size_y):
+    #         for j in range(grid_size_x):
+    #             start_row = i * (tile_size - overlap)
+    #             start_col = j * (tile_size - overlap)
+    #             end_row = start_row + tile_size
+    #             end_col = start_col + tile_size
+    #             reconstructed_img[start_row:end_row, start_col:end_col] += tiles[idx]
+    #             count_matrix[start_row:end_row, start_col:end_col] += 1
+    #             idx += 1
+    #
+    #     overlap_mask = count_matrix > 1
+    #     reconstructed_img[overlap_mask] /= count_matrix[overlap_mask]
+    #
+    #     return reconstructed_img
+    #
+    # def predict_and_reconstruct(image_data, model, tile_size, overlap, canopy_height_labels):
+    #     dataset = TiledDataset(image_data, canopy_height_labels, tile_size=tile_size, overlap=0)
+    #     loader = DataLoader(dataset, batch_size=1, shuffle=False)
+    #     predictions_list = []
+    #
+    #     model.eval()
+    #     with torch.no_grad():
+    #         for images, _ in loader:
+    #             images = images.to(device)
+    #             pred = model(images)
+    #             predictions_list.append(pred.detach().cpu().numpy())
+    #
+    #     predictions = np.concatenate(predictions_list, axis=0).squeeze()
+    #     img_height, img_width = image_data.shape[1], image_data.shape[2]
+    #     return reconstruct_image_merge(predictions, tile_size, overlap, (img_height, img_width))
+    #
+    # # Predict and reconstruct for both images
+    # reconstructed_predictions1 = predict_and_reconstruct(hls_data1, model, tile_size, overlap, canopy_height_labels)
+    # reconstructed_predictions2 = predict_and_reconstruct(hls_data2, model, tile_size, overlap, canopy_height_labels)
+    #
+    # # Combine predictions from both images
+    # combined_predictions = np.minimum(reconstructed_predictions1, reconstructed_predictions2)
+    #
+    # # Save the combined predictions
+    # transform = Affine.from_gdal(*geotransform)
+    # output_tiff_path = os.getcwd() + '/results/reconstructed_canopy_height_combined_3.tiff'
+    # out_meta = {
+    #     'driver': 'GTiff',
+    #     'dtype': 'float32',
+    #     'nodata': None,
+    #     'width': hls_data1.shape[2],
+    #     'height': hls_data1.shape[1],
+    #     'count': 1,
+    #     'crs': input_crs,
+    #     'transform': transform
+    # }
+    #
+    # with rasterio.open(output_tiff_path, 'w', **out_meta) as dst:
+    #     dst.write(combined_predictions, 1)
 
     ### Method 2 ###
 
@@ -212,7 +290,7 @@ def main(ctx, year, aoi):
     # train_dataset, val_dataset, test_dataset = random_split(dataset, [0, 0, test_size])
     # test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)0
 
-    dataset = TiledDataset(hls_data1, canopy_height_labels, tile_size=tile_size, overlap=0)
+    dataset = TiledDataset(hls_data1, canopy_height_labels, tile_size=tile_size, overlap=overlap)
     test_loader = DataLoader(dataset, batch_size=1, shuffle=False)
 
     # Test loop - img
@@ -250,7 +328,7 @@ def main(ctx, year, aoi):
     # total_pixels = targets_test_torch.numel()
     # print( valid_pixels.item(), total_pixels)
 
-    for i in range(1, 400, 20):
+    for i in range(1, 400, 40):
         # Plotting final results
         plt.figure(figsize=(12, 6))
         plt.subplot(1, 3, 1)
@@ -276,69 +354,3 @@ def main(ctx, year, aoi):
 
 if __name__ == "__main__":
     main()
-
-
-    ### Method 1 ###
-
-    def reconstruct_image_merge(tiles, tile_size, overlap, img_size):
-        reconstructed_img = np.zeros(img_size, dtype=np.float32)
-        count_matrix = np.zeros(img_size, dtype=np.float32)
-
-        grid_size_y = (img_size[0] - overlap) // (tile_size - overlap)
-        grid_size_x = (img_size[1] - overlap) // (tile_size - overlap)
-
-        idx = 0
-        for i in range(grid_size_y):
-            for j in range(grid_size_x):
-                start_row = i * (tile_size - overlap)
-                start_col = j * (tile_size - overlap)
-                end_row = start_row + tile_size
-                end_col = start_col + tile_size
-                reconstructed_img[start_row:end_row, start_col:end_col] += tiles[idx]
-                count_matrix[start_row:end_row, start_col:end_col] += 1
-                idx += 1
-
-        overlap_mask = count_matrix > 1
-        reconstructed_img[overlap_mask] /= count_matrix[overlap_mask]
-
-        return reconstructed_img
-
-    def predict_and_reconstruct(image_data, model, tile_size, overlap):
-        dataset = TiledDataset(image_data, canopy_height_labels, tile_size=tile_size, overlap=overlap)
-        loader = DataLoader(dataset, batch_size=1, shuffle=False)
-        predictions_list = []
-
-        model.eval()
-        with torch.no_grad():
-            for images, _ in loader:
-                images = images.to(device)
-                pred = model(images)
-                predictions_list.append(pred.detach().cpu().numpy())
-
-        predictions = np.concatenate(predictions_list, axis=0).squeeze()
-        img_height, img_width = image_data.shape[1], image_data.shape[2]
-        return reconstruct_image_merge(predictions, tile_size, overlap, (img_height, img_width))
-
-    # Predict and reconstruct for both images
-    # reconstructed_predictions1 = predict_and_reconstruct(hls_data1, model, tile_size=50, overlap=25)
-    # reconstructed_predictions2 = predict_and_reconstruct(hls_data2, model, tile_size=50, overlap=25)
-    #
-    # # Combine predictions from both images
-    # combined_predictions = np.minimum(reconstructed_predictions1, reconstructed_predictions2)
-    #
-    # # Save the combined predictions
-    # transform = Affine.from_gdal(*geotransform)
-    # output_tiff_path = os.getcwd() + '/results/reconstructed_canopy_height_combined_2.tiff'
-    # out_meta = {
-    #     'driver': 'GTiff',
-    #     'dtype': 'float32',
-    #     'nodata': None,
-    #     'width': hls_data1.shape[2],
-    #     'height': hls_data1.shape[1],
-    #     'count': 1,
-    #     'crs': input_crs,
-    #     'transform': transform
-    # }
-    #
-    # with rasterio.open(output_tiff_path, 'w', **out_meta) as dst:
-    #     dst.write(combined_predictions, 1)

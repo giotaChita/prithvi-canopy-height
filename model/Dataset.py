@@ -4,7 +4,7 @@ from utils.utils import preprocess_image
 from utils.gedi_data import load_gedi_shots
 from torch.utils.data import Dataset
 from utils.utils import latlon_to_pixel
-from utils.config import cache_path_rh98, gedi_path2, gedi_path1, cache_path_rh99
+from utils.config import cache_path_rh98, gedi_path2, gedi_path1, cache_path_rh99, cache_path_aoi3_gedi_shots_rh98, gedi_path3, cache_path_aoi3_gedi_shots_rh98_size1024
 import torch
 
 
@@ -76,7 +76,8 @@ def canopy_height_GEDI(hls_path, response):
     # load Gedi Shots from year 2019 and aoi the given one
 
     #Bigger AOI -> Polygon
-    gedi_shots = load_gedi_shots(gedi_path2)
+    # gedi_shots = load_gedi_shots(gedi_path2)
+    gedi_shots = load_gedi_shots(gedi_path3)
 
     ds = gdal.Open(hls_path)
     if ds is None:
@@ -108,10 +109,13 @@ def canopy_height_GEDI(hls_path, response):
             # patch_y_end = min(band_data.shape[0], pixel_y)
 
             # canopy_height_labels[patch_y_start:patch_y_end, patch_x_start:patch_x_end] = canopy_height
-            canopy_height_labels[pixel_y, pixel_x] = canopy_height
 
+            if pixel_x >= 512 or pixel_y >= 512:
+                print("x and y is out of boundaries")
+            else:
+                canopy_height_labels[pixel_y, pixel_x] = canopy_height
     canopy_height_labels = np.where(canopy_height_labels==0, np.nan, canopy_height_labels)
-    np.save(cache_path_rh98, canopy_height_labels)
+    np.save(cache_path_aoi3_gedi_shots_rh98_size1024, canopy_height_labels)
     return canopy_height_labels, gedi_shots
 
 

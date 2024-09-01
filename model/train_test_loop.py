@@ -36,7 +36,7 @@ def train_val_loop(model,device, batch_size, patch_size, tile_size, train_loader
         print(f"Number of trainable parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
         num_param = {sum(p.numel() for p in model.parameters() if p.requires_grad)}
 
-        num_epochs = 100
+        num_epochs = 50
         # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
         scaler = torch.cuda.amp.GradScaler()
 
@@ -51,7 +51,7 @@ def train_val_loop(model,device, batch_size, patch_size, tile_size, train_loader
         # Comet
         experiment = Experiment(
             api_key="YZiwsYqIN87kijoaS5atmnqqz",
-            project_name="prithvi_original-ch",
+            project_name="prithvi_original-aoi3",
             workspace="tagio"
 
         )
@@ -64,7 +64,9 @@ def train_val_loop(model,device, batch_size, patch_size, tile_size, train_loader
             'tile_size': tile_size,
             'patch_size': patch_size,
             'embed_dim': 768,
-            'rh metric:': 'rh98'
+            'rh metric:': 'rh98',
+            'aoi': 'aoi3',
+            'overlap': 0
         })
 
         model.to(device)

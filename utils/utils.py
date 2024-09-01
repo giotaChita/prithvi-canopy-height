@@ -14,8 +14,8 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 gdal.UseExceptions()
 
-CLIENT_ID = "744033d4-6720-4a67-89e7-ffda2113f57c"
-CLIENT_SECRET = "qoyB4xFJD1xGJIFATEuZNaxHUZRwOSuT"
+CLIENT_ID = "899e4b9d-0d92-4f7f-9373-f223e661c4cf"
+CLIENT_SECRET = "MqFJfh6EfchPUnUKSRhw8e33hQI1BUAQ"
 
 CLIENT_ID_COP = "sh-4b71279f-c0a6-4692-bc42-59cf99ac8df0"
 CLIENT_SECRET_COP = "Pejh6vTsk6y9NwLekYK8ilFLdZUpsnqK"
@@ -204,8 +204,8 @@ def load_hls_with_request2(year, aoi):
             }]
         },
         "output": {
-            "height": 512,
-            "width": 512,
+            "height": 1024,
+            "width": 1024,
             "responses": [
              {
                 "identifier": "default",

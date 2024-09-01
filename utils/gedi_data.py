@@ -18,7 +18,7 @@ import shapely
 import warnings
 from shapely.errors import ShapelyDeprecationWarning
 import math
-from utils.config import out_path_quality_shots_rh98,out_path_quality_shots_rh99
+from utils.config import out_path_quality_shots_rh98,out_path_quality_shots_rh99, out_path_quality_shots_aoi3_rh98
 warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
 # !pip install seaborn
 import requests as r
@@ -52,7 +52,7 @@ def gedi_finder_granules_links(product, bbox):
 def save_gedi_shots(transecDF):
     savefile = transecDF.copy()
     savefile = savefile.reset_index(drop=True)
-    outName = out_path_quality_shots_rh98
+    outName = out_path_quality_shots_aoi3_rh98
     savefile.to_file(outName, driver='GeoJSON')  # Export to GeoJSON
 
 def load_gedi_shots(path):
