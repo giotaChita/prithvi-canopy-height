@@ -223,7 +223,6 @@ class CanopyHeightHead(nn.Module):
         self.final_conv = nn.Conv2d(kernel_size=1, in_channels=in_channels, out_channels=1)
         self.relu = nn.ReLU()
 
-
     def forward(self, x, t_size):
         x = self.upscaling_blocks(x)
         x = self.final_conv(x)

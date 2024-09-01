@@ -1,5 +1,5 @@
 import click
-from utils.config import cache_path_rh98, device, best_model_path_new, cache_path, cache_path_rh99,pretrained_model_path
+from utils.config import cache_path_rh98, device, best_model_path_new, cache_path, cache_path_rh99,pretrained_model_path, best_model_path
 from model.Dataset import canopy_height_GEDI, TiledDataset, preprocess_data
 from utils.utils import load_hls_with_request2, compute_metrics, plot_loaders, preprocess_image, \
     load_model_with_checkpoint, load_tif_as_array
@@ -86,44 +86,50 @@ def main(ctx, year, aoi):
 
     else:
         canopy_height_labels_rh98 = np.load(cache_path_rh98)
+        # canopy_height_labels_rh99 = np.load(cache_path_rh99)
+        # canopy_height_labels_rh100 = np.load(cache_path)
+
+        canopy_height_labels = torch.tensor(canopy_height_labels_rh98, dtype=torch.float32)
+
+    compare = False
+
+    if compare:
+        canopy_height_labels_rh98 = np.load(cache_path_rh98)
         canopy_height_labels_rh99 = np.load(cache_path_rh99)
         canopy_height_labels_rh100 = np.load(cache_path)
+        # Compare rh100, rh99 rh98
+        canopy_height_flat = canopy_height_labels_rh100.flatten()
+        canopy_height_rh99_flat = canopy_height_labels_rh99.flatten()
+        canopy_height_rh98_flat = canopy_height_labels_rh98.flatten()
 
-        canopy_height_labels = torch.tensor(canopy_height_labels_rh99, dtype=torch.float32)
+        # Remove NaN values
+        canopy_height_flat = canopy_height_flat[~np.isnan(canopy_height_flat)]
+        canopy_height_rh98_flat = canopy_height_rh98_flat[~np.isnan(canopy_height_rh98_flat)]
+        canopy_height_rh99_flat = canopy_height_rh99_flat[~np.isnan(canopy_height_rh99_flat)]
 
-    # Compare rh100, rh99 rh98
-    canopy_height_flat = canopy_height_labels_rh100.flatten()
-    canopy_height_rh99_flat = canopy_height_labels_rh99.flatten()
-    canopy_height_rh98_flat = canopy_height_labels_rh98.flatten()
+        # Plot histograms
+        plt.figure(figsize=(10, 6))
 
-    # Remove NaN values
-    canopy_height_flat = canopy_height_flat[~np.isnan(canopy_height_flat)]
-    canopy_height_rh98_flat = canopy_height_rh98_flat[~np.isnan(canopy_height_rh98_flat)]
-    canopy_height_rh99_flat = canopy_height_rh99_flat[~np.isnan(canopy_height_rh99_flat)]
+        plt.hist(canopy_height_flat, bins=50, alpha=0.5, label='Canopy Height RH100', color='orange')
+        plt.hist(canopy_height_rh99_flat, bins=50, alpha=0.5, label='Canopy Height RH99', color='blue')
+        plt.hist(canopy_height_rh98_flat, bins=50, alpha=0.5, label='Canopy Height RH98', color='red')
 
-    # Plot histograms
-    plt.figure(figsize=(10, 6))
+        plt.title('Comparison of Canopy Heights')
+        plt.xlabel('Canopy Height (m)')
+        plt.ylabel('Frequency')
+        plt.legend(loc='upper right')
 
-    plt.hist(canopy_height_flat, bins=50, alpha=0.5, label='Canopy Height RH100', color='orange')
-    plt.hist(canopy_height_rh99_flat, bins=50, alpha=0.5, label='Canopy Height RH99', color='blue')
-    plt.hist(canopy_height_rh98_flat, bins=50, alpha=0.5, label='Canopy Height RH98', color='red')
-
-    plt.title('Comparison of Canopy Heights')
-    plt.xlabel('Canopy Height (m)')
-    plt.ylabel('Frequency')
-    plt.legend(loc='upper right')
-
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
 
     # Scaling images
     hls_data1, response1 = preprocess_data(response1)
     hls_data2, response2 = preprocess_data(response2)
 
-    tile_size = 50
-    overlap = tile_size // 2
-
+    tile_size = 60
+    # overlap = tile_size // 2
+    overlap = 0
     dataset1 = TiledDataset(hls_data1, canopy_height_labels, tile_size=tile_size, overlap=overlap)
 
     # Count non-NaN pixels of canopy height for img1
@@ -179,7 +185,7 @@ def main(ctx, year, aoi):
 
     # print(f"Number of trainable parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}, Trainable layers: {trainable_layers}")
 
-    train = False # Set to true to rerun the training, validation, test process
+    train = True # Set to true to rerun the training, validation, test process
 
     if train:
         # Train and Validation Loop
@@ -187,13 +193,90 @@ def main(ctx, year, aoi):
 
     # Load best model
     weight = '/media/giota/e0c77d18-e407-43fd-ad90-b6dd27f3ac38/Thesis/Model/Model_Code/src/model/save_load_model/best_model_state_2024_08_31_163305.pth'
-    model.load_state_dict(torch.load(weight))
+    weight2 = '/media/giota/e0c77d18-e407-43fd-ad90-b6dd27f3ac38/Thesis/Model/Model_Code/src/model/save_load_model/best_model_state_2024_09_01_124424.pth'
+    # model.load_state_dict(torch.load(weight))
+    exit()
+    model.load_state_dict(torch.load(weight2))
     model.to(device)
 
     test = True
     if test:
         # Test loop
         test_loop(model, test_loader, device)
+
+    ### Method 2 ###
+
+    # Recreate dataset to plot for the whole img -> zero overlap
+    # dataset = TiledDataset(hls_data1, canopy_height_labels, tile_size=50, overlap=0)
+    # test_size = len(dataset)
+    # train_dataset, val_dataset, test_dataset = random_split(dataset, [0, 0, test_size])
+    # test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)0
+
+    dataset = TiledDataset(hls_data1, canopy_height_labels, tile_size=tile_size, overlap=0)
+    test_loader = DataLoader(dataset, batch_size=1, shuffle=False)
+
+    # Test loop - img
+
+    model.eval()
+    test_loss = 0.0
+    predictions_list = []
+    targets_list = []
+    image_list = []
+
+    with torch.no_grad():
+        for images, labels in test_loader:
+            images = images.to(device)
+            labels = labels.to(device)
+            pred = model(images)
+            loss = model.forward_loss(pred, labels)
+            test_loss += loss.item()
+            predictions_list.append(pred.detach().cpu().numpy())
+            targets_list.append(labels.detach().cpu().numpy())
+            image_list.append(images.detach().cpu().numpy())
+
+    test_loss /= len(test_loader)
+
+    # Compute metrics for test set
+    predictions_test = np.concatenate(predictions_list, axis=0).squeeze()
+    targets_test = np.concatenate(targets_list, axis=0).squeeze()
+    test_mae, test_rmse, test_r2 = compute_metrics(predictions_test, targets_test)
+
+    print(f"Test Loss: {test_loss:.4f}")
+    print(f"Test MAE: {test_mae:.4f}, Test RMSE: {test_rmse:.4f}, Test R-squared: {test_r2:.4f}")
+
+    # targets_test_torch = torch.tensor(targets_test, dtype=torch.float32)
+
+    # valid_pixels = torch.sum(~torch.isnan(targets_test_torch))
+    # total_pixels = targets_test_torch.numel()
+    # print( valid_pixels.item(), total_pixels)
+
+    for i in range(1, 400, 20):
+        # Plotting final results
+        plt.figure(figsize=(12, 6))
+        plt.subplot(1, 3, 1)
+        plt.imshow(predictions_test[i, :, :], cmap='viridis', vmin=0, vmax=50)
+        plt.title('Predicted Canopy Heights')
+        plt.colorbar()
+
+        plt.subplot(1, 3, 2)
+        plt.imshow(targets_test[i, :, :], cmap='viridis', vmin=0, vmax=50)
+        plt.title('Ground Truth Canopy Heights from GEDI')
+        plt.colorbar()
+        #
+        image_tile = image_list[i]
+        image_tile = image_tile[0,1,0,:,:]
+        plt.subplot(1, 3, 3)
+        plt.imshow(image_tile, cmap='gray')
+        plt.title('Image HLS')
+        plt.colorbar()
+
+        plt.tight_layout()
+        plt.show()
+
+
+if __name__ == "__main__":
+    main()
+
 
     ### Method 1 ###
 
@@ -259,77 +342,3 @@ def main(ctx, year, aoi):
     #
     # with rasterio.open(output_tiff_path, 'w', **out_meta) as dst:
     #     dst.write(combined_predictions, 1)
-
-    ### Method 2 ###
-
-    # Recreate dataset to plot for the whole img -> zero overlap
-    dataset = TiledDataset(hls_data1, canopy_height_labels, tile_size=50, overlap=0)
-    test_size = len(dataset)
-    train_dataset, val_dataset, test_dataset = random_split(dataset, [0, 0, test_size])
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
-    #
-    # dataset = TiledDataset(hls_data1, canopy_height_labels, tile_size=50, overlap=25)
-    # test_loader = DataLoader(dataset, batch_size=1, shuffle=False)
-
-    # Test loop - img
-
-    model.eval()
-    test_loss = 0.0
-    predictions_list = []
-    targets_list = []
-    image_list = []
-
-    with torch.no_grad():
-        for images, labels in test_loader:
-            images = images.to(device)
-            labels = labels.to(device)
-            pred = model(images)
-            loss = model.forward_loss(pred, labels)
-            test_loss += loss.item()
-            predictions_list.append(pred.detach().cpu().numpy())
-            targets_list.append(labels.detach().cpu().numpy())
-            image_list.append(images.detach().cpu().numpy())
-
-
-    test_loss /= len(test_loader)
-    # Compute metrics for test set
-    predictions_test = np.concatenate(predictions_list, axis=0).squeeze()
-    targets_test = np.concatenate(targets_list, axis=0).squeeze()
-    test_mae, test_rmse, test_r2 = compute_metrics(predictions_test, targets_test)
-
-    print(f"Test Loss: {test_loss:.4f}")
-    print(f"Test MAE: {test_mae:.4f}, Test RMSE: {test_rmse:.4f}, Test R-squared: {test_r2:.4f}")
-
-    # targets_test_torch = torch.tensor(targets_test, dtype=torch.float32)
-
-    # valid_pixels = torch.sum(~torch.isnan(targets_test_torch))
-    # total_pixels = targets_test_torch.numel()
-    # print( valid_pixels.item(), total_pixels)
-
-    for i in range(1, 120, 8):
-        # Plotting final results
-        plt.figure(figsize=(12, 6))
-        plt.subplot(1, 3, 1)
-        plt.imshow(predictions_test[i, :, :], cmap='viridis', vmin=0, vmax=50)
-        plt.title('Predicted Canopy Heights')
-        plt.colorbar()
-
-        plt.subplot(1, 3, 2)
-        plt.imshow(targets_test[i, :, :], cmap='viridis', vmin=0, vmax=50)
-        plt.title('Ground Truth Canopy Heights from GEDI')
-        plt.colorbar()
-        #
-        image_tile = image_list[0]
-        image_tile = image_tile[i,0,0,:,:]
-        plt.subplot(1, 3, 3)
-        plt.imshow(image_tile, cmap='gray')
-        plt.title('Image HLS')
-        plt.colorbar()
-
-        plt.tight_layout()
-        plt.show()
-
-
-if __name__ == "__main__":
-    main()

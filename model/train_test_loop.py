@@ -64,7 +64,7 @@ def train_val_loop(model,device, batch_size, patch_size, tile_size, train_loader
             'tile_size': tile_size,
             'patch_size': patch_size,
             'embed_dim': 768,
-            'rh metric:': 'rh99'
+            'rh metric:': 'rh98'
         })
 
         model.to(device)

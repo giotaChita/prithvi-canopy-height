@@ -52,7 +52,7 @@ def gedi_finder_granules_links(product, bbox):
 def save_gedi_shots(transecDF):
     savefile = transecDF.copy()
     savefile = savefile.reset_index(drop=True)
-    outName = out_path_quality_shots_rh99
+    outName = out_path_quality_shots_rh98
     savefile.to_file(outName, driver='GeoJSON')  # Export to GeoJSON
 
 def load_gedi_shots(path):
@@ -220,12 +220,12 @@ def load_gedi_shots(path):
 
     # Create a shot index
     shotIndex = np.arange(shotNums.size)
-    canopyHeight = [r[99] for r in rh]  # Now chnage RH98 instead of Grab RH100 (index 100 for each RH metrics)
+    canopyHeight = [r[98] for r in rh]  # Now chnage RH98 instead of Grab RH100 (index 100 for each RH metrics)
 
     # Take the DEM, GEDI-produced Elevation, and RH Metrics and add to a Pandas dataframe
     transecTotal = pd.DataFrame({'Shot Index': shotIndex, 'Shot Number': shotNums, 'Latitude': zLat, 'Longitude': zLon,
                                'Tandem-X DEM': dem, 'SRTM DEM': srtm, 'Elevation (m)': zElevation, 'Canopy Elevation (m)': zHigh,
-                               'Canopy Height (rh99)': canopyHeight, 'Quality Flag': quality, 'Degrade Flag': degrade,  # rh change
+                               'Canopy Height (rh98)': canopyHeight, 'Quality Flag': quality, 'Degrade Flag': degrade,  # rh change
                                'Sensitivity': sensitivity})
 
     # Quality Filtering:
