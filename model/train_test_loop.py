@@ -36,7 +36,7 @@ def train_val_loop(model,device, batch_size, patch_size, tile_size, train_loader
         print(f"Number of trainable parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
         num_param = {sum(p.numel() for p in model.parameters() if p.requires_grad)}
 
-        num_epochs = 50
+        num_epochs = 100
         # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
         scaler = torch.cuda.amp.GradScaler()
 

@@ -7,7 +7,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.profilers import PyTorchProfiler
 from osgeo import gdal
 import click
-from utils.config import cache_path, best_model_path_new
+from utils.config import cache_path, best_model_path_new, cache_path_aoi3_gedi_shots_rh98_size1024
 from model.Dataset import canopy_height_GEDI, TiledDataset, preprocess_data
 from utils.utils import load_hls_with_request2, plot_loaders, load_tif_as_array
 import numpy as np
@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader, random_split
 import torch
 import matplotlib.pyplot as plt
 import os
-
+from torch.utils.tensorboard import SummaryWriter
 
 @click.command(
     short_help="Canopy Height Estimation",
@@ -59,15 +59,18 @@ def main(ctx, year, aoi):
     else:
 
         # Load the save tiff hls images
-        file_path1 = os.getcwd() + '/results/hls_HLS.S30.T32TMS.2019045T103129.v2.0_2024-08-13_1307.tif'
-        file_path2 = os.getcwd() + '/results/hls_HLS.S30.T32TMS.2019052T102039.v2.0_2024-08-13_1302.tif'
+        # file_path1 = os.getcwd() + '/results/hls_HLS.S30.T32TMS.2019045T103129.v2.0_2024-08-13_1307.tif'
+        # file_path2 = os.getcwd() + '/results/hls_HLS.S30.T32TMS.2019052T102039.v2.0_2024-08-13_1302.tif'
+
+        # aoi 3 , hls size 1024
+        file_path1 = os.getcwd() + '/results/hls_HLS.S30.T32TLT.2019080T103021.v2.0_2024-09-01_2241.tif'
+        file_path2 = os.getcwd() + '/results/hls_HLS.S30.T32TMT.2019110T103031.v2.0_2024-09-01_2241.tif'
 
         response1, t1 = load_tif_as_array(file_path1)
         response2, t2 = load_tif_as_array(file_path2)
 
     print(response1.shape)
     print(response2.shape)
-
 
     ds = gdal.Open(file_path1)
     if ds is None:
@@ -83,8 +86,9 @@ def main(ctx, year, aoi):
     if download_gedi_shots:
         canopy_height_labels, _ = canopy_height_GEDI(file_path1, response1)
     else:
-        canopy_height_labels = np.load(cache_path)
-        canopy_height_labels = torch.tensor(canopy_height_labels, dtype=torch.float32)
+        # canopy_height_labels = np.load(cache_path)
+        canopy_height_labels_aoi3 = np.load(cache_path_aoi3_gedi_shots_rh98_size1024)
+        canopy_height_labels = torch.tensor(canopy_height_labels_aoi3, dtype=torch.float32)
 
     # Scaling images
     hls_data1, response1 = preprocess_data(response1)
@@ -110,7 +114,6 @@ def main(ctx, year, aoi):
     test_size = len(dataset) - train_size - val_size
 
     train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
-
     def count_parameters(model):
         total_params = sum(p.numel() for p in model.parameters())
         trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -123,23 +126,30 @@ def main(ctx, year, aoi):
     # Create a Comet Logger
     comet_logger = CometLogger(
         api_key="YZiwsYqIN87kijoaS5atmnqqz",
-        project_name="prithvi-pytorch-lightning",
+        project_name="prithvi-original-aoi3",
         workspace="tagio"
     )
 
     # parameters
     lr = 1e-3
     batch_size = 8 # 16
-    epochs = 300
+    epochs = 100
 
     hparams = {
             'lr': lr,
             'batch_size': batch_size,
             'num_epochs': epochs,
-            'log_interval': 3,
+            'log_interval': 5,
             'step_size':  2,
-            'gamma': 0.1
+            'gamma': 0.1,
+            'aoi': 3,
+            'tile_size': tile_size,
+            'overlap': overlap
         }
+
+    # train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
+    # val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=2)
+    # test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=2)
 
     # # Initialize the PyTorch Profiler
     # profiler = PyTorchProfiler(
@@ -169,11 +179,30 @@ def main(ctx, year, aoi):
         gradient_clip_val=0.5,
         profiler='simple' ,#profiler,
         logger=comet_logger,
-        callbacks=[ModelCheckpoint(monitor='average val_loss', mode='min'),
+        callbacks=[ModelCheckpoint(monitor='val_loss', mode='min'),
                     LearningRateMonitor(logging_interval='epoch'),
                     early_stopping],
 
     )
+
+    trainer.fit(model)#, train_dataloaders=train_loader, val_dataloaders=val_loader)
+
+    # Save the best model
+    torch.save(model.best_model_weights, best_model_path_new)
+
+    # Load the best model
+
+    # model.load_state_dict(torch.load(weight3))
+    # model.to(device)
+
+    # Test the model
+    trainer.test(model)#, dataloaders=test_loader)
+
+
+if __name__ == "__main__":
+    main()
+
+
     #
     # # Learning Rate Finder
     # tuner = Tuner(trainer)
@@ -183,17 +212,4 @@ def main(ctx, year, aoi):
     #
     # hparams['lr'] = suggested_lr
     # model = CHLighteningModule(tile_size=50, patch_size=16, hparams=hparams, train_dataset=train_dataset, val_dataset=val_dataset, test_dataset=test_dataset)
-
-    trainer.fit(model)
-    trainer.validate(model)
-
-    # Save the best model
-    torch.save(model.best_model_weights, best_model_path_new)
-
-    # Test the model
-    trainer.test(model)
-
-
-if __name__ == "__main__":
-    main()
 

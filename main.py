@@ -140,9 +140,9 @@ def main(ctx, year, aoi):
     hls_data1, response1 = preprocess_data(response1)
     hls_data2, response2 = preprocess_data(response2)
 
-    tile_size = 100
-    # overlap = tile_size // 2
-    overlap = 0
+    tile_size = 250
+    overlap = tile_size // 2
+    # overlap = 0
     dataset1 = TiledDataset(hls_data1, canopy_height_labels, tile_size=tile_size, overlap=overlap)
 
     # Count non-NaN pixels of canopy height for img1
@@ -162,7 +162,7 @@ def main(ctx, year, aoi):
 
     train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
 
-    batch_size = 16
+    batch_size = 8 # 16
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
@@ -203,13 +203,12 @@ def main(ctx, year, aoi):
     if train:
         # Train and Validation Loop
         train_val_loop(model, device, batch_size, patch_size, tile_size, train_loader, val_loader)
-
+    exit()
     # Load best model
-    weight = '/media/giota/e0c77d18-e407-43fd-ad90-b6dd27f3ac38/Thesis/Model/Model_Code/src/model/save_load_model/best_model_state_2024_08_31_163305.pth'
-    weight2 = '/media/giota/e0c77d18-e407-43fd-ad90-b6dd27f3ac38/Thesis/Model/Model_Code/src/model/save_load_model/best_model_state_2024_09_01_124424.pth'
+    weight3 = '/media/giota/e0c77d18-e407-43fd-ad90-b6dd27f3ac38/Thesis/Model/Model_Code/src/model/save_load_model/best_model_state_2024_09_01_231922.pth'
     # model.load_state_dict(torch.load(weight))
     # exit()
-    model.load_state_dict(torch.load(best_model_path))
+    model.load_state_dict(torch.load(weight3))
     model.to(device)
 
     test = True
