@@ -18,7 +18,9 @@ import shapely
 import warnings
 from shapely.errors import ShapelyDeprecationWarning
 import math
-from utils.config import out_path_quality_shots_rh98,out_path_quality_shots_rh99, out_path_quality_shots_aoi3_rh98
+from utils.config import (out_path_quality_shots_rh98,out_path_quality_shots_rh99, out_path_quality_shots_aoi4_rh98_28_9,out_path_quality_shots_aoi3_rh98, out_path_quality_shots_aoi5_rh95, out_path_quality_shots_aoi3_rh95_filter3,
+                          out_path_quality_shots_aoi4_rh95_second_filter, out_path_quality_shots_aoi4_rh95_second_filter_waterzero,
+                          out_path_quality_shots_aoi4_rh98, out_path_quality_shots2, out_path_quality_shots_aoi4_rh95_17_10_new_filter, out_path_quality_shots_aoi4_rh95_17_10_filter3, out_path_quality_shots_aoi4_rh95_old_filter)
 warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
 # !pip install seaborn
 import requests as r
@@ -52,7 +54,7 @@ def gedi_finder_granules_links(product, bbox):
 def save_gedi_shots(transecDF):
     savefile = transecDF.copy()
     savefile = savefile.reset_index(drop=True)
-    outName = out_path_quality_shots_aoi3_rh98
+    outName = out_path_quality_shots_aoi4_rh95_second_filter_waterzero
     savefile.to_file(outName, driver='GeoJSON')  # Export to GeoJSON
 
 def load_gedi_shots(path):
@@ -61,7 +63,7 @@ def load_gedi_shots(path):
 
     # Loop through each file
     for file_name in os.listdir(path):
-        if file_name.endswith('.h5') and file_name.startswith('processed_GEDI02'):
+        if file_name.endswith('.h5'):# and file_name.startswith('processed_GEDI02'):
             count+=1
             file_path = os.path.join(path, file_name)
             if count == 1:
@@ -87,7 +89,6 @@ def load_gedi_shots(path):
     all_dataframes = []
     gediSDS = []
 
-
     # Loop through each file
     for file_name in os.listdir(path):
         if file_name.endswith('.h5'):
@@ -106,9 +107,11 @@ def load_gedi_shots(path):
                         lons = gediL2A[f'{beam_name}/lon_lowestmode'][()]
                         shots = gediL2A[f'{beam_name}/shot_number'][()]
                         quality = gediL2A[f'{beam_name}/quality_flag'][()]
+                        sensitivity = gediL2A[f'{beam_name}/sensitivity'][()]
+                        landsat_water_persistence = gediL2A[f'{beam_name}/landsat_water_persistence'][()]
 
                         # Initialize lists to store filtered data
-                        lonSample, latSample, shotSample, qualitySample, beamSample = [], [], [], [], []
+                        lonSample, latSample, shotSample, qualitySample, beamSample, sensitivitySample, landsat_water_persistenceSample = [], [], [], [], [], [], []
 
                         # Take every shot with good quality and append to lists
                         for i in range(len(shots)):
@@ -118,6 +121,8 @@ def load_gedi_shots(path):
                                 latSample.append(lats[i])
                                 qualitySample.append(quality[i])
                                 beamSample.append(beam_name)
+                                sensitivitySample.append(sensitivity[i])
+                                landsat_water_persistenceSample.append(landsat_water_persistence[i])
 
                         # Create a DataFrame for the current beam
                         beam_dataframe = pd.DataFrame({
@@ -126,12 +131,15 @@ def load_gedi_shots(path):
                             'Longitude': lonSample,
                             'Latitude': latSample,
                             'Quality Flag': qualitySample,
+                            'Sensitivity': sensitivitySample,
+                            'landsat_water_persistence': landsat_water_persistenceSample
                         })
 
                         # Append the filtered DataFrame to the list
                         filtered_dataframes.append(beam_dataframe)
                     except KeyError:
-                        print(f"Beam {beam_name} does not have all required attributes. Skipping...")
+                        print("")
+                        # print(f"Beam {beam_name} does not have all required attributes. Skipping...")
                     # Concatenate all DataFrames for beams in the current file into a single DataFrame
                 if filtered_dataframes:
                     file_dataframe = pd.concat(filtered_dataframes, ignore_index=True)
@@ -149,10 +157,11 @@ def load_gedi_shots(path):
                             # If it is, append the object reference (obj_ref) to gediSDS
                             gediSDS.append(obj_ref)
                     except KeyError:
-                        print(f"Object reference {obj_ref} does not exist or is invalid. Skipping...")
+                        print("")
+                        # print(f"Object reference {obj_ref} does not exist or is invalid. Skipping...")
 
     # Initialize empty lists for each variable
-    dem_list, srtm_list, zElevation_list, zHigh_list, zLat_list, zLon_list, rh_list, quality_list, degrade_list, sensitivity_list, shotNums_list = [], [], [], [], [], [], [], [], [], [], []
+    dem_list, srtm_list, zElevation_list, zHigh_list, zLat_list, zLon_list, rh_list, quality_list, degrade_list, sensitivity_list, shotNums_list, landsat_water_persistence_list, urban_proportion_list = [], [], [], [], [], [], [], [], [], [], [], [], []
 
     # Iterate over gediL2A objects and append the values to the lists
     for gediL2A in gediL2A_list:
@@ -202,6 +211,14 @@ def load_gedi_shots(path):
                 if matching_datasets11:
                     shotNums_list.append(gediL2A[matching_datasets11[0]][()])
 
+                matching_datasets12 = [g for g in gediSDS if g.endswith(f'{beamName}/land_cover_data/landsat_water_persistence')]
+                if matching_datasets12:
+                    landsat_water_persistence_list.append(gediL2A[matching_datasets12[0]][()])
+
+                matching_datasets13 = [g for g in gediSDS if g.endswith(f'{beamName}/land_cover_data/urban_proportion')]
+                if matching_datasets13:
+                    urban_proportion_list.append(gediL2A[matching_datasets13[0]][()])
+
             except KeyError:
                 print(f"Dataset for beam {beamName} not found. Skipping...")
 
@@ -217,31 +234,62 @@ def load_gedi_shots(path):
     rh = np.vstack(rh_list)
     sensitivity = np.concatenate(sensitivity_list, axis=-1)
     shotNums = np.concatenate(shotNums_list, axis=-1)
+    landsat_water_persistence = np.concatenate(landsat_water_persistence_list, axis=-1)
+    urban_proportion = np.concatenate(urban_proportion_list, axis=-1)
 
     # Create a shot index
     shotIndex = np.arange(shotNums.size)
-    canopyHeight = [r[98] for r in rh]  # Now chnage RH98 instead of Grab RH100 (index 100 for each RH metrics)
+    canopyHeight = [r[95] for r in rh]  # Now chnage RH98 instead of Grab RH100 (index 100 for each RH metrics)
 
     # Take the DEM, GEDI-produced Elevation, and RH Metrics and add to a Pandas dataframe
     transecTotal = pd.DataFrame({'Shot Index': shotIndex, 'Shot Number': shotNums, 'Latitude': zLat, 'Longitude': zLon,
                                'Tandem-X DEM': dem, 'SRTM DEM': srtm, 'Elevation (m)': zElevation, 'Canopy Elevation (m)': zHigh,
-                               'Canopy Height (rh98)': canopyHeight, 'Quality Flag': quality, 'Degrade Flag': degrade,  # rh change
-                               'Sensitivity': sensitivity})
+                               'Canopy Height (rh95)': canopyHeight, 'Quality Flag': quality, 'Degrade Flag': degrade,  # rh change
+                               'Sensitivity': sensitivity, 'landsat_water_persistence': landsat_water_persistence, 'urban_proportion': urban_proportion})
 
     # Quality Filtering:
-    # Below, remove any shots where the quality_flag is set to 0 by defining those shots as nan.
-    transectDF = transecTotal.where(transecTotal['Quality Flag'].ne(0))  # Set any poor quality returns to NaN
-    transectDF = transectDF.dropna()  # Drop all the rows (shots) that did not pass the quality filtering above
-    print(f"Quality filtering complete, {len(transectDF)} high quality shots remaining.")
+    print(f"Before quality filter 3, {len(transecTotal)} total shots.")
+    #
+    # # # Below, remove any shots where the quality_flag is set to 0 by defining those shots as nan.
+    # transectDF = transecTotal.where(transecTotal['Quality Flag'].ne(0))  # Set any poor quality returns to NaN
+    # transectDF = transectDF.dropna()  # Drop all the rows (shots) that did not pass the quality filtering above
+    # transectDF = transecTotal
 
-    # Create a copy of the DataFrame to avoid SettingWithCopyWarning
+    # # print(f"Before sensitivity, urban_proportion and water persistence filter and urban_proportion, {len(transecTotal)} total shots.")
+    # #
+    quality_flag_condition = (transecTotal['Quality Flag'] == 1)
+    water_condition = (transecTotal['landsat_water_persistence'] >= 10) & \
+                      (transecTotal['Canopy Height (rh95)'] == 0)  # limit is 10
+    transectDF = transecTotal[water_condition | quality_flag_condition]
+    print(f"Quality filtering 3 complete, {len(transectDF)} high quality shots remaining.")
+
+    # Very extra sos:
+    transectDF.loc[transectDF['landsat_water_persistence'] == 100, 'Canopy Height (rh95)'] = 0
+
+    # # # (transecTotal['Sensitivity'] > 0.5) & \
+    # #
+    # # land_condition = (transecTotal['landsat_water_persistence'] < 10) & \
+    # #                  (transecTotal['Sensitivity'] > 0.92) & \
+    # #                  (transecTotal['Canopy Height (rh95)'] >= 0) & \
+    # #                  (transecTotal['Sensitivity'] <= 1.0) & \
+    # #                  (transecTotal['urban_proportion'] < 50)
+    # #
+    # # # Apply the combined filter
+    # # transectDF = transecTotal[water_condition | land_condition]  # Select rows matching either condition
+    #
+    # # Print the number of shots that passed the filter
+    # print(f"After sensitivity, urban_proportion and water persistence filter, {len(transectDF)} total shots remaining.")
+
     transectDF1 = transectDF.copy()
     transectDF1 = transectDF1.reset_index(drop=True)
+
     # Take the lat/lon dataframe and convert each lat/lon to a shapely
     transectDF1['geometry'] = transectDF1.apply(lambda row:
     Point(row['Longitude'], row['Latitude']), axis=1)
+
     # Convert to a Geodataframe
     transectDF1 = gp.GeoDataFrame(transectDF1)
+
     save_gedi_shots(transectDF1)
 
     return transectDF

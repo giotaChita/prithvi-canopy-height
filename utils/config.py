@@ -10,12 +10,32 @@ out_path_quality_shots_rh99 = os.getcwd() + '/data/gedi_swiss_qualityshots_aoi_r
 out_path_quality_shots2 = os.getcwd() + '/data/gedi_swiss_qualityshots_aoi2.json'
 out_path_quality_shots1 = os.getcwd() + '/data/gedi_swiss_qualityshots_aoi1.json'
 out_path_quality_shots_aoi3_rh98 = os.getcwd() + '/data/gedi_swiss_qualityshots_aoi3_rh98.json'
+out_path_quality_shots_aoi4_rh98 = os.getcwd() + '/data/gedi_aoi4_qualityshots_rh98.json'
+out_path_quality_shots_aoi4_rh98_28_9 = os.getcwd() + '/data/gedi_aoi4_qualityshots_rh98_28_9.json'
+out_path_quality_shots_aoi4_rh95_17_10_new_filter = os.getcwd() + '/data/gedi_aoi4_rh95_newfilter.json'
+out_path_quality_shots_aoi4_rh95_17_10_filter3 = os.getcwd() + '/data/gedi_aoi4_rh95_filter3.json'
+out_path_quality_shots_aoi5_rh95 = os.getcwd() + '/data/gedi_swiss_qualityshots_aoi5_rh95.json'
+out_path_quality_shots_aoi3_rh95_filter3 = os.getcwd() + '/data/gedi_aoi3_rh95_filter3.json'
+out_path_quality_shots_aoi4_rh95_old_filter = os.getcwd() + '/data/gedi_aoi4_rh95_old_filter.json'
+out_path_quality_shots_aoi4_rh95_second_filter = os.getcwd() + '/data/gedi_aoi4_rh95_second_filter.json'
+out_path_quality_shots_aoi4_rh95_second_filter_waterzero = os.getcwd() + '/data/gedi_aoi4_rh95_second_filter_waterzero.json'
+
+
 # path to gedi shots
 cache_path = os.getcwd()+"/data/canopy_height_labels.npy"
 cache_path_rh98 = os.getcwd() + "/data/canopy_height_labels_rh98.npy"
 cache_path_rh99 = os.getcwd() + "/data/canopy_height_labels_rh99.npy"
 cache_path_aoi3_gedi_shots_rh98 = os.getcwd() + "/data/canopy_height_labels_aoi3_rh98.npy"
 cache_path_aoi3_gedi_shots_rh98_size1024 = os.getcwd() + "/data/canopy_height_labels_aoi3_rh98_size1024.npy"
+cache_path_aoi4_gedi_shots_rh98 = os.getcwd() + "/data/chlabels_aoi4_rh98.npy"
+cache_path_aoi4_gedi_shots_rh98_28_9 = os.getcwd() + "/data/canopy_height_labels_aoi4_rh98_28_9.npy"
+cache_path_aoi4_rh95_new_filter = os.getcwd() + "/data/canopy_height_labels_aoi4_rh95_17_10.npy"
+cache_path_aoi4_rh95_filter3 = os.getcwd() + "/data/canopy_height_labels_aoi4_rh95_filter3.npy"
+cache_path_aoi5_rh95 = os.getcwd() + "/data/canopy_height_labels_aoi5_rh95.npy"
+cache_path_aoi3_rh95_filter3 = os.getcwd() + "/data/canopy_height_labels_aoi3_rh95_filter3.npy"
+cache_path_aoi4_rh95_old_filter = os.getcwd() + "/data/canopy_height_labels_aoi4_rh95_old_filter.npy"
+cache_path_aoi4_rh95_second_filter = os.getcwd() + "/data/canopy_height_labels_aoi4_rh95_second_filter.npy"
+cache_path_aoi4_rh95_second_filter_waterzero = os.getcwd() + "/data/canopy_height_labels_aoi4_rh95_second_filter_water_zero.npy"
 
 
 # Model pretrained w
@@ -48,3 +68,10 @@ gedi_path2 = os.getcwd() + "/data/gedi_data_aoi2"
 
 # Path to gedi shots for aoi3 (bigger than aoi2)
 gedi_path3 = os.getcwd() + "/data/gedi_data_aoi3"
+
+# Path to gedi shots for aoi4
+gedi_path4 = os.getcwd() + "/data/gedi_data_aoi4"
+
+gedi_path5 = os.getcwd() + "/data/gedi_data_aoi5"
+
+
